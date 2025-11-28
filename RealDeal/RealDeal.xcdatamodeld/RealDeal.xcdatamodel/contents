@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="23F79" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="1.0">
+    <entity name="PropertyEntity" representedClassName="PropertyEntity" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="addressStreet" attributeType="String"/>
+        <attribute name="addressCity" attributeType="String"/>
+        <attribute name="addressState" attributeType="String"/>
+        <attribute name="addressZipCode" attributeType="String"/>
+        <attribute name="addressCountry" attributeType="String"/>
+        <attribute name="price" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="propertyType" attributeType="String"/>
+        <attribute name="propertyDescription" attributeType="String"/>
+        <attribute name="specBedrooms" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="specBathrooms" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="specSquareFeet" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="specLotSize" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="specYearBuilt" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="imagesData" optional="YES" attributeType="Binary"/>
+        <attribute name="latitude" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="longitude" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="source" attributeType="String"/>
+        <attribute name="sellerId" optional="YES" attributeType="String"/>
+        <attribute name="status" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+        <fetchIndex name="bySellerIndex">
+            <fetchIndexElement property="sellerId" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byStatusIndex">
+            <fetchIndexElement property="status" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byPriceIndex">
+            <fetchIndexElement property="price" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byLocationIndex">
+            <fetchIndexElement property="latitude" type="Binary" order="ascending"/>
+            <fetchIndexElement property="longitude" type="Binary" order="ascending"/>
+        </fetchIndex>
+    </entity>
+    <entity name="UserProfileEntity" representedClassName="UserProfileEntity" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="name" attributeType="String"/>
+        <attribute name="email" attributeType="String"/>
+        <attribute name="phoneNumber" optional="YES" attributeType="String"/>
+        <attribute name="profilePhotoURLString" optional="YES" attributeType="String"/>
+        <attribute name="role" attributeType="String"/>
+        <attribute name="visibilityShowEmail" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="visibilityShowPhone" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="visibilityShowListings" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+        <fetchIndex name="byEmailIndex">
+            <fetchIndexElement property="email" type="Binary" order="ascending"/>
+        </fetchIndex>
+    </entity>
+    <entity name="FavoriteEntity" representedClassName="FavoriteEntity" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="userId" attributeType="String"/>
+        <attribute name="propertyId" attributeType="String"/>
+        <attribute name="savedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+        <fetchIndex name="byUserIndex">
+            <fetchIndexElement property="userId" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byPropertyIndex">
+            <fetchIndexElement property="propertyId" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byUserPropertyIndex">
+            <fetchIndexElement property="userId" type="Binary" order="ascending"/>
+            <fetchIndexElement property="propertyId" type="Binary" order="ascending"/>
+        </fetchIndex>
+    </entity>
+</model>
