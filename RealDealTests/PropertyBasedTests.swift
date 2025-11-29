@@ -151,6 +151,51 @@ final class PropertyBasedTests: XCTestCase {
         }
     }
     
+    // MARK: - Property-Based Test for Profile Update Persistence Round-Trip
+    
+    /// Feature: real-estate-listings, Property 23: Profile update persistence round-trip
+    /// Validates: Requirements 7.2
+    func testProfileUpdatePersistenceRoundTrip() {
+        // Test that updating a profile and retrieving it reflects all changes
+        property("Profile update persistence round-trip preserves all changes") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let originalProfile = validUserProfileGen().resize(seed).generate
+            let updatedProfile = self.createUpdatedProfile(from: originalProfile, seed: seed)
+            let expectation = XCTestExpectation(description: "Profile update persistence round-trip")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Save the original profile
+                    try await localDataSource.saveUserProfile(originalProfile)
+                    
+                    // Update the profile with new values
+                    try await localDataSource.saveUserProfile(updatedProfile)
+                    
+                    // Retrieve the profile
+                    guard let retrievedProfile = try await localDataSource.getUserProfile(id: originalProfile.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify the retrieved profile matches the updated version, not the original
+                    result = self.profilesAreEquivalent(updatedProfile, retrievedProfile)
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
     // MARK: - Property-Based Test for Profile Photo Validation
     
     /// Feature: real-estate-listings, Property 25: Profile photo validation
@@ -183,6 +228,50 @@ final class PropertyBasedTests: XCTestCase {
 // MARK: - Helper Methods
 
 extension PropertyBasedTests {
+    /// Create an updated version of a profile with modified fields
+    func createUpdatedProfile(from original: UserProfile, seed: Int) -> UserProfile {
+        // Generate new values for various fields
+        let gen = Gen.compose { c in
+            // Update name
+            let newName = c.generate(using: Gen.fromElements(of: [
+                "Updated Name", "New User", "Modified Profile", "Changed Name", "Test User Updated"
+            ]))
+            
+            // Update phone number
+            let newPhoneNumber = c.generate(using: Gen.fromElements(of: [
+                nil, "555-9999", "555-8888", "(555) 777-6666", "+1-555-111-2222"
+            ]))
+            
+            // Update profile photo URL
+            let newPhotoURL = c.generate(using: Gen.fromElements(of: [
+                nil,
+                URL(string: "https://example.com/updated-photo.jpg"),
+                URL(string: "https://example.com/new-avatar.png"),
+                URL(string: "https://example.com/profile-pic.jpeg")
+            ]))
+            
+            // Update role
+            let newRole = c.generate(using: Gen.fromElements(of: [UserRole.buyer, .seller, .both]))
+            
+            // Update visibility settings
+            let newVisibility = c.generate(using: validProfileVisibilityGen())
+            
+            // Create updated profile with same ID but new values
+            return UserProfile(
+                id: original.id, // Keep same ID
+                name: newName,
+                email: original.email, // Keep email same (typically immutable)
+                phoneNumber: newPhoneNumber,
+                profilePhotoURL: newPhotoURL,
+                role: newRole,
+                visibilitySettings: newVisibility,
+                createdAt: original.createdAt // Keep original creation date
+            )
+        }
+        
+        return gen.resize(seed).generate
+    }
+    
     /// Create an updated version of a property with modified fields
     func createUpdatedProperty(from original: RealDeal.Property, seed: Int) -> RealDeal.Property {
         // Generate new values for various fields

@@ -59,7 +59,7 @@
   - **Property 6: Property update persistence round-trip**
   - **Validates: Requirements 2.3**
 
-- [ ]* 5.2 Write property test for profile update persistence round-trip
+- [x] 5.2 Write property test for profile update persistence round-trip
   - **Property 23: Profile update persistence round-trip**
   - **Validates: Requirements 7.2**
 
