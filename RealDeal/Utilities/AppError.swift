@@ -76,7 +76,7 @@ enum NetworkError: Error {
     }
 }
 
-enum ValidationError: Error {
+enum ValidationError: Error, Equatable {
     case missingRequiredField(String)
     case invalidFormat(String)
     case invalidImageFormat
