@@ -55,7 +55,7 @@
   - Implement offline-first data access with fallback to cache
   - _Requirements: 1.4, 2.3, 10.3, 11.1_
 
-- [ ]* 5.1 Write property test for update persistence round-trip
+- [x] 5.1 Write property test for update persistence round-trip
   - **Property 6: Property update persistence round-trip**
   - **Validates: Requirements 2.3**
 

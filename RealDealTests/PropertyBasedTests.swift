@@ -106,6 +106,51 @@ final class PropertyBasedTests: XCTestCase {
         }
     }
     
+    // MARK: - Property-Based Test for Property Update Persistence Round-Trip
+    
+    /// Feature: real-estate-listings, Property 6: Property update persistence round-trip
+    /// Validates: Requirements 2.3
+    func testPropertyUpdatePersistenceRoundTrip() {
+        // Test that updating a property and retrieving it reflects all changes
+        property("Property update persistence round-trip preserves all changes") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let originalProperty = validPropertyGen().resize(seed).generate
+            let updatedProperty = self.createUpdatedProperty(from: originalProperty, seed: seed)
+            let expectation = XCTestExpectation(description: "Property update persistence round-trip")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Save the original property
+                    try await localDataSource.saveProperty(originalProperty)
+                    
+                    // Update the property with new values
+                    try await localDataSource.saveProperty(updatedProperty)
+                    
+                    // Retrieve the property
+                    guard let retrievedProperty = try await localDataSource.getProperty(id: originalProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify the retrieved property matches the updated version, not the original
+                    result = self.propertiesAreEquivalent(updatedProperty, retrievedProperty)
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
     // MARK: - Property-Based Test for Profile Photo Validation
     
     /// Feature: real-estate-listings, Property 25: Profile photo validation
@@ -138,6 +183,46 @@ final class PropertyBasedTests: XCTestCase {
 // MARK: - Helper Methods
 
 extension PropertyBasedTests {
+    /// Create an updated version of a property with modified fields
+    func createUpdatedProperty(from original: RealDeal.Property, seed: Int) -> RealDeal.Property {
+        // Generate new values for various fields
+        let gen = Gen.compose { c in
+            // Update price
+            let newPrice = Decimal(c.generate(using: Gen.fromElements(in: 50000...5000000)))
+            
+            // Update description
+            let newDescription = c.generate(using: validDescriptionGen())
+            
+            // Update status
+            let newStatus = c.generate(using: Gen.fromElements(of: [PropertyStatus.active, .pending, .sold]))
+            
+            // Update specifications
+            let newSpecs = c.generate(using: validSpecificationsGen())
+            
+            // Update images
+            let newImages = c.generate(using: validImagesGen())
+            
+            // Create updated property with same ID but new values
+            return RealDeal.Property(
+                id: original.id, // Keep same ID
+                address: original.address, // Keep address same for simplicity
+                price: newPrice,
+                propertyType: original.propertyType, // Keep type same
+                description: newDescription,
+                specifications: newSpecs,
+                images: newImages,
+                location: original.location, // Keep location same
+                source: original.source,
+                sellerId: original.sellerId,
+                status: newStatus,
+                createdAt: original.createdAt, // Keep original creation date
+                updatedAt: Date() // Update timestamp
+            )
+        }
+        
+        return gen.resize(seed).generate
+    }
+    
     /// Compare two user profiles for equivalence
     func profilesAreEquivalent(_ p1: UserProfile, _ p2: UserProfile) -> Bool {
         // Compare basic fields
