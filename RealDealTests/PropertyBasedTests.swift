@@ -223,6 +223,58 @@ final class PropertyBasedTests: XCTestCase {
             }
         }
     }
+    
+    // MARK: - Property-Based Test for Offline Cache Accessibility
+    
+    /// Feature: real-estate-listings, Property 33: Offline cache accessibility
+    /// Validates: Requirements 10.3
+    func testOfflineCacheAccessibility() {
+        // Test that previously loaded properties remain accessible from cache when offline
+        // This tests the core cache functionality that enables offline access
+        property("Previously loaded properties should be accessible from cache when offline") <- forAll(Gen.fromElements(in: 1...10)) { (propertyCount: Int) in
+            let testProperties = (0..<propertyCount).map { _ in validPropertyGen().generate }
+            let expectation = XCTestExpectation(description: "Offline cache accessibility")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Step 1: Save properties to cache (simulating what happens when online)
+                    try await localDataSource.saveProperties(testProperties)
+                    
+                    // Step 2: Retrieve properties from cache (simulating offline access)
+                    // This is what the repository does when offline - it falls back to local cache
+                    let cachedProperties = try await localDataSource.fetchProperties(filters: nil)
+                    
+                    // Step 3: Verify all previously loaded properties are still accessible
+                    guard cachedProperties.count == propertyCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 4: Verify each property is equivalent to what was saved
+                    let sortedOriginal = testProperties.sorted(by: { $0.id < $1.id })
+                    let sortedCached = cachedProperties.sorted(by: { $0.id < $1.id })
+                    
+                    result = zip(sortedOriginal, sortedCached).allSatisfy { original, cached in
+                        self.propertiesAreEquivalent(original, cached)
+                    }
+                    
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
 }
 
 // MARK: - Helper Methods
@@ -828,3 +880,4 @@ func validPNGImageDataGen() -> Gen<Data> {
     Gen.pure(Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
     #endif
 }
+

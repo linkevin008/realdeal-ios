@@ -63,7 +63,7 @@
   - **Property 23: Profile update persistence round-trip**
   - **Validates: Requirements 7.2**
 
-- [ ]* 5.3 Write property test for offline cache accessibility
+- [x] 5.3 Write property test for offline cache accessibility
   - **Property 33: Offline cache accessibility**
   - **Validates: Requirements 10.3**
 
