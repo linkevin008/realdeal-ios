@@ -224,6 +224,233 @@ final class PropertyBasedTests: XCTestCase {
         }
     }
     
+    // MARK: - Property-Based Test for Valid Credentials Authentication
+    
+    /// Feature: real-estate-listings, Property 19: Valid credentials authenticate successfully
+    /// Validates: Requirements 6.1
+    func testValidCredentialsAuthenticateSuccessfully() {
+        // Test that valid credentials successfully authenticate and grant access
+        property("Valid credentials should authenticate successfully") <- forAll { (seed: Int) in
+            let credentials = validCredentialsGen().resize(seed).generate
+            let expectation = XCTestExpectation(description: "Valid credentials authentication")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    let mockAuth = MockAuthenticationService(simulateNetworkDelay: false)
+                    let userRepo = UserProfileRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let authService = AuthenticationService(
+                        backendAuth: mockAuth,
+                        userProfileRepository: userRepo
+                    )
+                    
+                    // Step 1: Register the user with valid credentials
+                    let profile = UserProfile(
+                        name: credentials.name,
+                        email: credentials.email,
+                        role: .buyer
+                    )
+                    _ = try await authService.signUp(
+                        email: credentials.email,
+                        password: credentials.password,
+                        profile: profile
+                    )
+                    
+                    // Step 2: Sign out
+                    try await authService.signOut()
+                    
+                    // Step 3: Sign in with the same valid credentials
+                    let token = try await authService.signIn(
+                        email: credentials.email,
+                        password: credentials.password
+                    )
+                    
+                    // Step 4: Verify authentication succeeded
+                    // - Token should be non-empty
+                    // - Current user should be set
+                    // - Current user email should match
+                    result = !token.accessToken.isEmpty &&
+                             authService.currentUser != nil &&
+                             authService.currentUser?.email == credentials.email
+                    
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Invalid Credentials Rejection
+    
+    /// Feature: real-estate-listings, Property 20: Invalid credentials are rejected
+    /// Validates: Requirements 6.2
+    func testInvalidCredentialsAreRejected() {
+        // Test that invalid credentials are rejected with appropriate error
+        property("Invalid credentials should be rejected") <- forAll { (seed: Int) in
+            let invalidCreds = invalidCredentialsGen().resize(seed).generate
+            let expectation = XCTestExpectation(description: "Invalid credentials rejection")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    let mockAuth = MockAuthenticationService(simulateNetworkDelay: false)
+                    let userRepo = UserProfileRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let authService = AuthenticationService(
+                        backendAuth: mockAuth,
+                        userProfileRepository: userRepo
+                    )
+                    
+                    // If we have a registered user, register them first
+                    if let registeredUser = invalidCreds.registeredUser {
+                        let profile = UserProfile(
+                            name: registeredUser.name,
+                            email: registeredUser.email,
+                            role: .buyer
+                        )
+                        _ = try await authService.signUp(
+                            email: registeredUser.email,
+                            password: registeredUser.password,
+                            profile: profile
+                        )
+                        try await authService.signOut()
+                    }
+                    
+                    // Attempt to sign in with invalid credentials
+                    _ = try await authService.signIn(
+                        email: invalidCreds.attemptEmail,
+                        password: invalidCreds.attemptPassword
+                    )
+                    
+                    // If we reach here, authentication succeeded when it should have failed
+                    result = false
+                    expectation.fulfill()
+                } catch {
+                    // Authentication correctly failed - verify it's an appropriate error
+                    result = true
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Registration Validation
+    
+    /// Feature: real-estate-listings, Property 21: Registration validation enforcement
+    /// Validates: Requirements 6.3
+    func testRegistrationValidationEnforcement() {
+        // Test that invalid registration data is rejected with appropriate validation errors
+        property("Invalid registration data should be rejected") <- forAll { (seed: Int) in
+            let invalidReg = invalidRegistrationDataGen().resize(abs(seed)).generate
+            let expectation = XCTestExpectation(description: "Invalid registration rejection")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    let mockAuth = MockAuthenticationService(simulateNetworkDelay: false)
+                    let userRepo = UserProfileRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let authService = AuthenticationService(
+                        backendAuth: mockAuth,
+                        userProfileRepository: userRepo
+                    )
+                    
+                    // Attempt to register with invalid data
+                    _ = try await authService.signUp(
+                        email: invalidReg.email,
+                        password: invalidReg.password,
+                        profile: invalidReg.profile
+                    )
+                    
+                    // If we reach here, registration succeeded when it should have failed
+                    result = false
+                    expectation.fulfill()
+                } catch {
+                    // Registration correctly failed - any error is acceptable for invalid data
+                    // The key is that it failed, not the specific error type
+                    result = true
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+        
+        // Test that valid registration data is accepted
+        property("Valid registration data should be accepted") <- forAll { (seed: Int) in
+            let validReg = validRegistrationDataGen().resize(abs(seed)).generate
+            let expectation = XCTestExpectation(description: "Valid registration acceptance")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    let mockAuth = MockAuthenticationService(simulateNetworkDelay: false)
+                    let userRepo = UserProfileRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let authService = AuthenticationService(
+                        backendAuth: mockAuth,
+                        userProfileRepository: userRepo
+                    )
+                    
+                    // Attempt to register with valid data
+                    let token = try await authService.signUp(
+                        email: validReg.email,
+                        password: validReg.password,
+                        profile: validReg.profile
+                    )
+                    
+                    // Verify registration succeeded
+                    result = !token.accessToken.isEmpty &&
+                             authService.currentUser != nil &&
+                             authService.currentUser?.email == validReg.email
+                    
+                    expectation.fulfill()
+                } catch {
+                    // Registration failed when it should have succeeded
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
     // MARK: - Property-Based Test for Offline Cache Accessibility
     
     /// Feature: real-estate-listings, Property 33: Offline cache accessibility
@@ -879,5 +1106,333 @@ func validPNGImageDataGen() -> Gen<Data> {
     // Fallback for non-UIKit platforms: generate minimal PNG header
     Gen.pure(Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
     #endif
+}
+
+// MARK: - Generators for Authentication Data
+
+/// Struct to hold valid credentials for testing
+struct ValidCredentials {
+    let email: String
+    let password: String
+    let name: String
+}
+
+/// Generator for valid credentials (email, password, name)
+func validCredentialsGen() -> Gen<ValidCredentials> {
+    Gen.compose { c in
+        // Generate valid email addresses
+        let emailPrefixes = ["john.doe", "jane.smith", "bob.jones", "alice.williams", "charlie.brown", 
+                            "david.miller", "emma.davis", "frank.wilson", "grace.moore", "henry.taylor"]
+        let emailDomains = ["example.com", "test.com", "demo.org", "sample.net", "mail.com"]
+        
+        let prefix = c.generate(using: Gen.fromElements(of: emailPrefixes))
+        let domain = c.generate(using: Gen.fromElements(of: emailDomains))
+        let email = "\(prefix)@\(domain)"
+        
+        // Generate valid passwords (at least 8 characters with letters and numbers)
+        let passwords = ["password123", "SecurePass1", "TestUser99", "MyPass2024", "Welcome123",
+                        "Account456", "Login789", "Access2023", "User1234", "Demo5678"]
+        let password = c.generate(using: Gen.fromElements(of: passwords))
+        
+        // Generate valid names
+        let names = ["John Doe", "Jane Smith", "Bob Jones", "Alice Williams", "Charlie Brown",
+                    "David Miller", "Emma Davis", "Frank Wilson", "Grace Moore", "Henry Taylor"]
+        let name = c.generate(using: Gen.fromElements(of: names))
+        
+        return ValidCredentials(email: email, password: password, name: name)
+    }
+}
+
+/// Struct to hold invalid credentials for testing
+struct InvalidCredentials {
+    let attemptEmail: String
+    let attemptPassword: String
+    let registeredUser: ValidCredentials? // If non-nil, this user should be registered first
+}
+
+/// Generator for invalid credentials (various failure scenarios)
+func invalidCredentialsGen() -> Gen<InvalidCredentials> {
+    Gen.one(of: [
+        // Scenario 1: Unregistered email (user doesn't exist)
+        unregisteredEmailGen(),
+        // Scenario 2: Wrong password for registered user
+        wrongPasswordGen(),
+        // Scenario 3: Invalid email format
+        invalidEmailFormatGen(),
+        // Scenario 4: Empty password
+        emptyPasswordGen(),
+        // Scenario 5: Empty email
+        emptyEmailGen()
+    ])
+}
+
+/// Generator for unregistered email scenario
+func unregisteredEmailGen() -> Gen<InvalidCredentials> {
+    Gen.compose { c in
+        let unregisteredEmails = ["nonexistent@example.com", "notregistered@test.com", 
+                                 "unknown@demo.org", "fake@sample.net", "invalid@mail.com"]
+        let email = c.generate(using: Gen.fromElements(of: unregisteredEmails))
+        let password = c.generate(using: Gen.fromElements(of: ["password123", "anypassword", "test1234"]))
+        
+        return InvalidCredentials(
+            attemptEmail: email,
+            attemptPassword: password,
+            registeredUser: nil
+        )
+    }
+}
+
+/// Generator for wrong password scenario (user exists but password is wrong)
+func wrongPasswordGen() -> Gen<InvalidCredentials> {
+    Gen.compose { c in
+        // Generate a registered user
+        let registeredUser = validCredentialsGen().generate
+        
+        // Generate a different password
+        let wrongPasswords = ["wrongpass123", "incorrect1", "badpassword99", "notright456", "wrong789"]
+        let wrongPassword = c.generate(using: Gen.fromElements(of: wrongPasswords))
+        
+        return InvalidCredentials(
+            attemptEmail: registeredUser.email,
+            attemptPassword: wrongPassword,
+            registeredUser: registeredUser
+        )
+    }
+}
+
+/// Generator for invalid email format scenario
+func invalidEmailFormatGen() -> Gen<InvalidCredentials> {
+    Gen.compose { c in
+        let invalidEmails = ["notanemail", "missing@domain", "@nodomain.com", "no-at-sign.com",
+                           "double@@example.com", "spaces in@email.com", "invalid@", "test@.com"]
+        let email = c.generate(using: Gen.fromElements(of: invalidEmails))
+        let password = c.generate(using: Gen.fromElements(of: ["password123", "test1234"]))
+        
+        return InvalidCredentials(
+            attemptEmail: email,
+            attemptPassword: password,
+            registeredUser: nil
+        )
+    }
+}
+
+/// Generator for empty password scenario
+func emptyPasswordGen() -> Gen<InvalidCredentials> {
+    Gen.compose { c in
+        let validEmail = "test@example.com"
+        
+        return InvalidCredentials(
+            attemptEmail: validEmail,
+            attemptPassword: "",
+            registeredUser: nil
+        )
+    }
+}
+
+/// Generator for empty email scenario
+func emptyEmailGen() -> Gen<InvalidCredentials> {
+    Gen.compose { c in
+        let password = c.generate(using: Gen.fromElements(of: ["password123", "test1234"]))
+        
+        return InvalidCredentials(
+            attemptEmail: "",
+            attemptPassword: password,
+            registeredUser: nil
+        )
+    }
+}
+
+// MARK: - Generators for Registration Data
+
+/// Struct to hold registration data for testing
+struct RegistrationData {
+    let email: String
+    let password: String
+    let profile: UserProfile
+}
+
+/// Generator for valid registration data
+func validRegistrationDataGen() -> Gen<RegistrationData> {
+    Gen.compose { c in
+        // Generate valid email addresses (unique to avoid conflicts)
+        let emailPrefixes = ["john.doe", "jane.smith", "bob.jones", "alice.williams", "charlie.brown", 
+                            "david.miller", "emma.davis", "frank.wilson", "grace.moore", "henry.taylor"]
+        let emailDomains = ["example.com", "test.com", "demo.org", "sample.net", "mail.com"]
+        
+        let prefix = c.generate(using: Gen.fromElements(of: emailPrefixes))
+        let domain = c.generate(using: Gen.fromElements(of: emailDomains))
+        let email = "\(prefix)-\(UUID().uuidString.prefix(8))@\(domain)"
+        
+        // Generate valid passwords (at least 8 characters with letters and numbers)
+        let passwords = ["password123", "SecurePass1", "TestUser99", "MyPass2024", "Welcome123",
+                        "Account456", "Login789", "Access2023", "User1234", "Demo5678"]
+        let password = c.generate(using: Gen.fromElements(of: passwords))
+        
+        // Generate valid profile
+        let names = ["John Doe", "Jane Smith", "Bob Jones", "Alice Williams", "Charlie Brown",
+                    "David Miller", "Emma Davis", "Frank Wilson", "Grace Moore", "Henry Taylor"]
+        let name = c.generate(using: Gen.fromElements(of: names))
+        
+        let phoneNumbers: [String?] = [nil, "555-0100", "555-0101", "(555) 123-4567", "+1-555-987-6543"]
+        let phoneNumber = c.generate(using: Gen.fromElements(of: phoneNumbers))
+        
+        let roles = [UserRole.buyer, UserRole.seller, UserRole.both]
+        let role = c.generate(using: Gen.fromElements(of: roles))
+        
+        let profile = UserProfile(
+            name: name,
+            email: email,
+            phoneNumber: phoneNumber,
+            role: role
+        )
+        
+        return RegistrationData(email: email, password: password, profile: profile)
+    }
+}
+
+/// Generator for invalid registration data (various validation failure scenarios)
+func invalidRegistrationDataGen() -> Gen<RegistrationData> {
+    Gen.one(of: [
+        // Scenario 1: Invalid email format
+        invalidEmailRegistrationGen(),
+        // Scenario 2: Weak password (too short)
+        weakPasswordTooShortGen(),
+        // Scenario 3: Weak password (no letters)
+        weakPasswordNoLettersGen(),
+        // Scenario 4: Weak password (no numbers)
+        weakPasswordNoNumbersGen(),
+        // Scenario 5: Empty name
+        emptyNameRegistrationGen(),
+        // Scenario 6: Whitespace-only name
+        whitespaceNameRegistrationGen()
+    ])
+}
+
+/// Generator for registration with invalid email format
+func invalidEmailRegistrationGen() -> Gen<RegistrationData> {
+    Gen.compose { c in
+        let invalidEmails = ["notanemail", "missing@domain", "@nodomain.com", "no-at-sign.com",
+                           "double@@example.com", "spaces in@email.com", "invalid@", "test@.com",
+                           "test..double@example.com", ".startdot@example.com", "enddot.@example.com"]
+        let email = c.generate(using: Gen.fromElements(of: invalidEmails))
+        
+        // Use valid password and profile
+        let password = c.generate(using: Gen.fromElements(of: ["password123", "SecurePass1", "TestUser99"]))
+        let name = c.generate(using: Gen.fromElements(of: ["John Doe", "Jane Smith", "Bob Jones"]))
+        
+        let profile = UserProfile(
+            name: name,
+            email: email,
+            role: .buyer
+        )
+        
+        return RegistrationData(email: email, password: password, profile: profile)
+    }
+}
+
+/// Generator for registration with password that's too short
+func weakPasswordTooShortGen() -> Gen<RegistrationData> {
+    Gen.compose { c in
+        // Generate passwords shorter than 8 characters
+        let shortPasswords = ["pass1", "abc123", "test1", "pw12", "a1", "short7", "weak12"]
+        let password = c.generate(using: Gen.fromElements(of: shortPasswords))
+        
+        // Use valid email and profile (unique email to avoid conflicts)
+        let emailPrefix = c.generate(using: Gen.fromElements(of: ["user1", "user2", "user3", "user4", "user5"]))
+        let email = "\(emailPrefix)-\(UUID().uuidString.prefix(8))@example.com"
+        let name = c.generate(using: Gen.fromElements(of: ["John Doe", "Jane Smith", "Bob Jones"]))
+        
+        let profile = UserProfile(
+            name: name,
+            email: email,
+            role: .buyer
+        )
+        
+        return RegistrationData(email: email, password: password, profile: profile)
+    }
+}
+
+/// Generator for registration with password that has no letters
+func weakPasswordNoLettersGen() -> Gen<RegistrationData> {
+    Gen.compose { c in
+        // Generate passwords with only numbers (no letters)
+        let noLetterPasswords = ["12345678", "98765432", "11111111", "00000000", "123456789"]
+        let password = c.generate(using: Gen.fromElements(of: noLetterPasswords))
+        
+        // Use valid email and profile (unique email to avoid conflicts)
+        let emailPrefix = c.generate(using: Gen.fromElements(of: ["user1", "user2", "user3", "user4", "user5"]))
+        let email = "\(emailPrefix)-\(UUID().uuidString.prefix(8))@example.com"
+        let name = c.generate(using: Gen.fromElements(of: ["John Doe", "Jane Smith", "Bob Jones"]))
+        
+        let profile = UserProfile(
+            name: name,
+            email: email,
+            role: .buyer
+        )
+        
+        return RegistrationData(email: email, password: password, profile: profile)
+    }
+}
+
+/// Generator for registration with password that has no numbers
+func weakPasswordNoNumbersGen() -> Gen<RegistrationData> {
+    Gen.compose { c in
+        // Generate passwords with only letters (no numbers)
+        let noNumberPasswords = ["password", "testuser", "abcdefgh", "nodigits", "onlyletters"]
+        let password = c.generate(using: Gen.fromElements(of: noNumberPasswords))
+        
+        // Use valid email and profile (unique email to avoid conflicts)
+        let emailPrefix = c.generate(using: Gen.fromElements(of: ["user1", "user2", "user3", "user4", "user5"]))
+        let email = "\(emailPrefix)-\(UUID().uuidString.prefix(8))@example.com"
+        let name = c.generate(using: Gen.fromElements(of: ["John Doe", "Jane Smith", "Bob Jones"]))
+        
+        let profile = UserProfile(
+            name: name,
+            email: email,
+            role: .buyer
+        )
+        
+        return RegistrationData(email: email, password: password, profile: profile)
+    }
+}
+
+/// Generator for registration with empty name
+func emptyNameRegistrationGen() -> Gen<RegistrationData> {
+    Gen.compose { c in
+        // Use valid email and password (unique email to avoid conflicts)
+        let emailPrefix = c.generate(using: Gen.fromElements(of: ["user1", "user2", "user3", "user4", "user5"]))
+        let email = "\(emailPrefix)-\(UUID().uuidString.prefix(8))@example.com"
+        let password = c.generate(using: Gen.fromElements(of: ["password123", "SecurePass1", "TestUser99"]))
+        
+        // Empty name
+        let profile = UserProfile(
+            name: "",
+            email: email,
+            role: .buyer
+        )
+        
+        return RegistrationData(email: email, password: password, profile: profile)
+    }
+}
+
+/// Generator for registration with whitespace-only name
+func whitespaceNameRegistrationGen() -> Gen<RegistrationData> {
+    Gen.compose { c in
+        // Use valid email and password (unique email to avoid conflicts)
+        let emailPrefix = c.generate(using: Gen.fromElements(of: ["user1", "user2", "user3", "user4", "user5"]))
+        let email = "\(emailPrefix)-\(UUID().uuidString.prefix(8))@example.com"
+        let password = c.generate(using: Gen.fromElements(of: ["password123", "SecurePass1", "TestUser99"]))
+        
+        // Whitespace-only name
+        let whitespaceName = c.generate(using: Gen.fromElements(of: ["   ", "\t", "\n", "  \t\n  ", "\t\t\t"]))
+        
+        let profile = UserProfile(
+            name: whitespaceName,
+            email: email,
+            role: .buyer
+        )
+        
+        return RegistrationData(email: email, password: password, profile: profile)
+    }
 }
 

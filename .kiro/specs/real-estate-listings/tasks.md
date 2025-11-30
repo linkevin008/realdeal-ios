@@ -75,15 +75,15 @@
   - Add email and password validation logic
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ]* 6.1 Write property test for valid credentials authentication
+- [x] 6.1 Write property test for valid credentials authentication
   - **Property 19: Valid credentials authenticate successfully**
   - **Validates: Requirements 6.1**
 
-- [ ]* 6.2 Write property test for invalid credentials rejection
+- [x] 6.2 Write property test for invalid credentials rejection
   - **Property 20: Invalid credentials are rejected**
   - **Validates: Requirements 6.2**
 
-- [ ]* 6.3 Write property test for registration validation
+- [x] 6.3 Write property test for registration validation
   - **Property 21: Registration validation enforcement**
   - **Validates: Requirements 6.3**
 

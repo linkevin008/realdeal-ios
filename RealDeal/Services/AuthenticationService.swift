@@ -72,7 +72,7 @@ class AuthenticationService: AuthenticationServiceProtocol {
         }
         
         // Validate profile
-        guard !profile.name.trimmingCharacters(in: .whitespaces).isEmpty else {
+        guard !profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw AppError.validation(.missingRequiredField("Name"))
         }
         
@@ -169,9 +169,42 @@ class AuthenticationService: AuthenticationServiceProtocol {
 enum Validator {
     /// Validate email format
     static func isValidEmail(_ email: String) -> Bool {
-        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        // More strict email validation:
+        // - Must not start or end with dot
+        // - Must not have consecutive dots
+        // - Must have valid characters before and after @
+        let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
-        return emailPredicate.evaluate(with: email)
+        
+        guard emailPredicate.evaluate(with: email) else {
+            return false
+        }
+        
+        // Additional checks for edge cases
+        let components = email.components(separatedBy: "@")
+        guard components.count == 2 else {
+            return false
+        }
+        
+        let localPart = components[0]
+        let domainPart = components[1]
+        
+        // Local part should not start or end with dot
+        guard !localPart.hasPrefix("."), !localPart.hasSuffix(".") else {
+            return false
+        }
+        
+        // Domain part should not start or end with dot
+        guard !domainPart.hasPrefix("."), !domainPart.hasSuffix(".") else {
+            return false
+        }
+        
+        // Should not have consecutive dots
+        guard !email.contains("..") else {
+            return false
+        }
+        
+        return true
     }
     
     /// Validate password strength
