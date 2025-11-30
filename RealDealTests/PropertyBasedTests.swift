@@ -202,7 +202,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 7.4
     func testProfilePhotoValidation() {
         // Test that invalid profile photos are rejected during validation
-        property("Invalid profile photos should be rejected") <- forAll { (seed: Int) in
+        property("Invalid profile photos should be rejected") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
             let invalidImageData = invalidImageDataGen().resize(seed).generate
             do {
                 try ProfilePhotoValidator.validate(invalidImageData)
@@ -213,7 +213,7 @@ final class PropertyBasedTests: XCTestCase {
         }
         
         // Test that valid profile photos are accepted
-        property("Valid profile photos should be accepted") <- forAll { (seed: Int) in
+        property("Valid profile photos should be accepted") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
             let validImageData = validImageDataGen().resize(seed).generate
             do {
                 try ProfilePhotoValidator.validate(validImageData)

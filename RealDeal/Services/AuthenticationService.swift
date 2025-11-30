@@ -67,7 +67,7 @@ class AuthenticationService: AuthenticationServiceProtocol {
         }
         
         // Validate password
-        guard Validator.isValidPassword(password) else {
+        if let error = Validator.passwordValidationMessage(password) {
             throw AppError.validation(.weakPassword)
         }
         
@@ -235,5 +235,16 @@ enum Validator {
             return "Password must contain at least one number"
         }
         return nil
+    }
+    
+    /// Validate phone number format
+    static func isValidPhoneNumber(_ phoneNumber: String) -> Bool {
+        guard !phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return true // Empty is valid (optional field)
+        }
+        
+        let phonePattern = "^[+]?[(]?[0-9]{1,4}[)]?[-\\s\\.]?[(]?[0-9]{1,4}[)]?[-\\s\\.]?[0-9]{1,9}$"
+        let phonePredicate = NSPredicate(format: "SELF MATCHES %@", phonePattern)
+        return phonePredicate.evaluate(with: phoneNumber)
     }
 }

@@ -83,11 +83,11 @@
   - **Property 20: Invalid credentials are rejected**
   - **Validates: Requirements 6.2**
 
-- [x] 6.3 Write property test for registration validation
+- [-] 6.3 Write property test for registration validation
   - **Property 21: Registration validation enforcement**
   - **Validates: Requirements 6.3**
 
-- [ ] 7. Build user profile module
+- [x] 7. Build user profile module
   - Create ProfileRepository with CRUD operations
   - Implement ProfileViewModel managing profile state
   - Build profile creation and editing SwiftUI views
