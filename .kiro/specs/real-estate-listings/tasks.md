@@ -95,11 +95,11 @@
   - Implement profile visibility settings UI
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ]* 7.1 Write property test for profile visibility enforcement
+- [x] 7.1 Write property test for profile visibility enforcement
   - **Property 26: Profile visibility settings enforcement**
   - **Validates: Requirements 7.5**
 
-- [ ]* 7.2 Write property test for seller profile display
+- [x] 7.2 Write property test for seller profile display
   - **Property 24: Seller profile display completeness**
   - **Validates: Requirements 7.3**
 

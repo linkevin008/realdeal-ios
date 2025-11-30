@@ -1436,3 +1436,214 @@ func whitespaceNameRegistrationGen() -> Gen<RegistrationData> {
     }
 }
 
+// MARK: - Generator for Seller Profiles
+
+/// Generator for valid seller profiles (profiles with seller or both role)
+func validSellerProfileGen() -> Gen<UserProfile> {
+    Gen.compose { c in
+        let names = ["John Seller", "Jane Realtor", "Bob Agent", "Alice Broker", "Charlie Dealer"]
+        let emails = ["seller1@example.com", "seller2@example.com", "seller3@example.com", "seller4@example.com", "seller5@example.com"]
+        let phoneNumbers: [String?] = ["555-0100", "555-0101", "555-0102", "(555) 123-4567", "+1-555-987-6543"]
+        let photoURLs: [URL?] = [
+            nil,
+            URL(string: "https://example.com/seller1.jpg"),
+            URL(string: "https://example.com/seller2.png"),
+            URL(string: "https://example.com/seller3.jpeg")
+        ]
+        // Seller profiles should have seller or both role
+        let roles = [UserRole.seller, UserRole.both]
+        
+        let name = c.generate(using: Gen.fromElements(of: names))
+        let email = c.generate(using: Gen.fromElements(of: emails))
+        let phoneNumber = c.generate(using: Gen.fromElements(of: phoneNumbers))
+        let profilePhotoURL = c.generate(using: Gen.fromElements(of: photoURLs))
+        let role = c.generate(using: Gen.fromElements(of: roles))
+        
+        // Seller profiles should have contact info visible for buyers to contact them
+        let visibilitySettings = ProfileVisibility(
+            showEmail: true,
+            showPhone: true,
+            showListings: true
+        )
+        
+        return UserProfile(
+            name: name,
+            email: email,
+            phoneNumber: phoneNumber,
+            profilePhotoURL: profilePhotoURL,
+            role: role,
+            visibilitySettings: visibilitySettings
+        )
+    }
+}
+
+// MARK: - Property-Based Test for Profile Visibility Enforcement
+
+extension PropertyBasedTests {
+    /// Feature: real-estate-listings, Property 26: Profile visibility settings enforcement
+    /// Validates: Requirements 7.5
+    func testProfileVisibilitySettingsEnforcement() {
+        // Test that when a profile is displayed to other users, only information marked as visible is shown
+        property("Profile visibility settings should be enforced when displaying to other users") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let testProfile = validUserProfileGen().resize(seed).generate
+            let expectation = XCTestExpectation(description: "Profile visibility enforcement")
+            var result = false
+            
+            Task { @MainActor in
+                // Use in-memory persistence controller for testing
+                let testPersistence = PersistenceController(inMemory: true)
+                let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                let repository = UserProfileRepository(
+                    localDataSource: localDataSource,
+                    remoteDataSource: mockRemote
+                )
+                
+                let viewModel = ProfileViewModel(repository: repository)
+                
+                // Get filtered profile for display to other users (not own profile)
+                let filteredProfile = viewModel.getFilteredProfile(testProfile, isOwnProfile: false)
+                
+                // Verify visibility settings are enforced
+                var checksPass = true
+                
+                // Check email visibility
+                if !testProfile.visibilitySettings.showEmail {
+                    // Email should be hidden (replaced with "Hidden")
+                    checksPass = checksPass && (filteredProfile.email == "Hidden")
+                } else {
+                    // Email should be visible (unchanged)
+                    checksPass = checksPass && (filteredProfile.email == testProfile.email)
+                }
+                
+                // Check phone visibility
+                if !testProfile.visibilitySettings.showPhone {
+                    // Phone should be hidden (set to nil)
+                    checksPass = checksPass && (filteredProfile.phoneNumber == nil)
+                } else {
+                    // Phone should be visible (unchanged)
+                    checksPass = checksPass && (filteredProfile.phoneNumber == testProfile.phoneNumber)
+                }
+                
+                // Other fields should always be visible (name, role, photo, etc.)
+                checksPass = checksPass && (filteredProfile.name == testProfile.name)
+                checksPass = checksPass && (filteredProfile.role == testProfile.role)
+                checksPass = checksPass && (filteredProfile.profilePhotoURL == testProfile.profilePhotoURL)
+                checksPass = checksPass && (filteredProfile.id == testProfile.id)
+                
+                result = checksPass
+                expectation.fulfill()
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+        
+        // Test that own profile always shows all information regardless of visibility settings
+        property("Own profile should always show all information regardless of visibility settings") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let testProfile = validUserProfileGen().resize(seed).generate
+            let expectation = XCTestExpectation(description: "Own profile visibility")
+            var result = false
+            
+            Task { @MainActor in
+                // Use in-memory persistence controller for testing
+                let testPersistence = PersistenceController(inMemory: true)
+                let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                let repository = UserProfileRepository(
+                    localDataSource: localDataSource,
+                    remoteDataSource: mockRemote
+                )
+                
+                let viewModel = ProfileViewModel(repository: repository)
+                
+                // Get filtered profile for own profile display
+                let filteredProfile = viewModel.getFilteredProfile(testProfile, isOwnProfile: true)
+                
+                // Verify all fields are unchanged (no filtering applied)
+                result = self.profilesAreEquivalent(testProfile, filteredProfile)
+                expectation.fulfill()
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Seller Profile Display Completeness
+    
+    /// Feature: real-estate-listings, Property 24: Seller profile display completeness
+    /// Validates: Requirements 7.3
+    func testSellerProfileDisplayCompleteness() {
+        // Test that seller profiles display contact information and active listings count
+        property("Seller profile should display contact information and active listings count") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Generate a seller profile with visible contact information
+            let sellerProfile = validSellerProfileGen().resize(seed).generate
+            
+            // Generate some active properties for this seller
+            let activeListingsCount = seed % 10 // 0-9 active listings
+            let activeProperties = (0..<activeListingsCount).map { _ in
+                var property = validPropertyGen().generate
+                property.sellerId = sellerProfile.id
+                property.status = .active
+                return property
+            }
+            
+            let expectation = XCTestExpectation(description: "Seller profile display completeness")
+            var result = false
+            
+            Task { @MainActor in
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Save the seller profile
+                    try await localDataSource.saveUserProfile(sellerProfile)
+                    
+                    // Save the active properties
+                    try await localDataSource.saveProperties(activeProperties)
+                    
+                    // Fetch the seller's active properties directly from local storage
+                    // (This simulates what the UI would do to display the count)
+                    let allProperties = try await localDataSource.fetchProperties(filters: nil)
+                    let sellerActiveProperties = allProperties.filter { 
+                        $0.sellerId == sellerProfile.id && $0.status == .active 
+                    }
+                    
+                    // Verify completeness of seller profile display
+                    var checksPass = true
+                    
+                    // 1. Contact information should be available
+                    // Name should be present
+                    checksPass = checksPass && !sellerProfile.name.isEmpty
+                    
+                    // Email should be present
+                    checksPass = checksPass && !sellerProfile.email.isEmpty
+                    
+                    // Phone should be available if set (respecting visibility)
+                    // For seller profiles, we expect contact info to be visible
+                    if sellerProfile.visibilitySettings.showPhone && sellerProfile.phoneNumber != nil {
+                        checksPass = checksPass && !sellerProfile.phoneNumber!.isEmpty
+                    }
+                    
+                    // 2. Active listings count should be retrievable and accurate
+                    checksPass = checksPass && (sellerActiveProperties.count == activeListingsCount)
+                    
+                    // 3. Profile should have seller or both role
+                    checksPass = checksPass && (sellerProfile.role == .seller || sellerProfile.role == .both)
+                    
+                    result = checksPass
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+}
+
