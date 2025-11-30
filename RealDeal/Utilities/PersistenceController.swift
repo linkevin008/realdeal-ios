@@ -3,6 +3,12 @@ import CoreData
 struct PersistenceController {
     static let shared = PersistenceController()
     
+    /// Preview instance for SwiftUI previews and testing
+    static let preview: PersistenceController = {
+        let controller = PersistenceController(inMemory: true)
+        return controller
+    }()
+    
     let container: NSPersistentContainer
     
     init(inMemory: Bool = false) {

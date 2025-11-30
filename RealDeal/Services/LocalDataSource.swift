@@ -23,8 +23,10 @@ class LocalDataSource: LocalDataSourceProtocol {
             var predicates: [NSPredicate] = []
             
             if let filters = filters {
-                // Status filter - always exclude deleted
-                predicates.append(NSPredicate(format: "status != %@", PropertyStatus.deleted.rawValue))
+                // Status filter - always exclude deleted and sold (sold properties should not appear in buyer searches)
+                predicates.append(NSPredicate(format: "status != %@ AND status != %@", 
+                                             PropertyStatus.deleted.rawValue, 
+                                             PropertyStatus.sold.rawValue))
                 
                 // Price range filter
                 if let priceMin = filters.priceMin {
@@ -76,8 +78,10 @@ class LocalDataSource: LocalDataSourceProtocol {
                                                  minLat, maxLat, minLon, maxLon))
                 }
             } else {
-                // Default: exclude deleted properties
-                predicates.append(NSPredicate(format: "status != %@", PropertyStatus.deleted.rawValue))
+                // Default: exclude deleted and sold properties (sold properties should not appear in buyer searches)
+                predicates.append(NSPredicate(format: "status != %@ AND status != %@", 
+                                             PropertyStatus.deleted.rawValue, 
+                                             PropertyStatus.sold.rawValue))
             }
             
             if !predicates.isEmpty {

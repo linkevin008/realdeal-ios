@@ -135,38 +135,38 @@
   - **Property 5: Seller listing filtering**
   - **Validates: Requirements 2.1**
 
-- [ ]* 9.2 Write property test for sold listings exclusion
+- [x] 9.2 Write property test for sold listings exclusion
   - **Property 8: Sold listings excluded from buyer searches**
   - **Validates: Requirements 2.5**
 
-- [ ] 10. Implement property filtering system
+- [x] 10. Implement property filtering system
   - Create FilterService applying multiple filter criteria
   - Build PropertyFilters model with price range, type, location radius
   - Implement filter combination logic (AND operation)
   - Add filter validation and sanitization
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ]* 10.1 Write property test for price range filter
+- [x] 10.1 Write property test for price range filter
   - **Property 11: Price range filter correctness**
   - **Validates: Requirements 4.1**
 
-- [ ]* 10.2 Write property test for property type filter
+- [x] 10.2 Write property test for property type filter
   - **Property 12: Property type filter correctness**
   - **Validates: Requirements 4.2**
 
-- [ ]* 10.3 Write property test for location radius filter
+- [x] 10.3 Write property test for location radius filter
   - **Property 13: Location radius filter correctness**
   - **Validates: Requirements 4.3**
 
-- [ ]* 10.4 Write property test for multiple filter conjunction
+- [x] 10.4 Write property test for multiple filter conjunction
   - **Property 14: Multiple filter conjunction**
   - **Validates: Requirements 4.4**
 
-- [ ]* 10.5 Write property test for filter clearing
+- [x] 10.5 Write property test for filter clearing
   - **Property 15: Filter clearing restores all active listings**
   - **Validates: Requirements 4.5**
 
-- [ ] 11. Build property search and browse interface
+- [x] 11. Build property search and browse interface
   - Create PropertyListViewModel with filtering and pagination
   - Build property list view with cards showing key details
   - Add filter UI with price sliders, type checkboxes, location radius
@@ -174,7 +174,7 @@
   - Add pull-to-refresh functionality
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 12. Implement property detail view
+- [x] 12. Implement property detail view
   - Create PropertyDetailViewModel managing detail state
   - Build property detail view with all information sections
   - Add image gallery with horizontal scroll
@@ -183,19 +183,19 @@
   - Show seller profile information with contact details
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 7.3_
 
-- [ ]* 12.1 Write property test for property detail display
+- [x] 12.1 Write property test for property detail display
   - **Property 16: Property detail display completeness**
   - **Validates: Requirements 5.1**
 
-- [ ]* 12.2 Write property test for image gallery display
+- [x] 12.2 Write property test for image gallery display
   - **Property 17: All property images displayed**
   - **Validates: Requirements 5.2**
 
-- [ ]* 12.3 Write property test for timestamp display
+- [x] 12.3 Write property test for timestamp display
   - **Property 18: Timestamp display in property details**
   - **Validates: Requirements 5.5**
 
-- [ ] 13. Implement MapKit integration
+- [x] 13. Implement MapKit integration
   - Create LocationManager handling permissions and location updates
   - Build MapViewModel managing map state and annotations
   - Create custom property marker annotations
@@ -204,7 +204,7 @@
   - Implement dynamic marker updates based on visible region
   - _Requirements: 3.1, 3.3, 3.4, 3.5_
 
-- [ ]* 13.1 Write property test for active listings as markers
+- [x] 13.1 Write property test for active listings as markers
   - **Property 9: Active listings appear as map markers**
   - **Validates: Requirements 3.1**
 
