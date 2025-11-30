@@ -116,22 +116,22 @@
   - **Property 1: Property creation with valid data succeeds**
   - **Validates: Requirements 1.1**
 
-- [ ]* 8.2 Write property test for image association persistence
+- [x] 8.2 Write property test for image association persistence
   - **Property 2: Image association persistence**
   - **Validates: Requirements 1.2**
 
-- [ ]* 8.3 Write property test for property deletion
+- [x] 8.3 Write property test for property deletion
   - **Property 7: Property deletion removes from storage**
   - **Validates: Requirements 2.4**
 
-- [ ] 9. Build seller listing management views
+- [x] 9. Build seller listing management views
   - Create MyListingsViewModel fetching seller's properties
   - Build seller listings list view with property cards
   - Add status management (active, pending, sold)
   - Implement listing status update functionality
   - _Requirements: 2.1, 2.5_
 
-- [ ]* 9.1 Write property test for seller listing filtering
+- [x] 9.1 Write property test for seller listing filtering
   - **Property 5: Seller listing filtering**
   - **Validates: Requirements 2.1**
 

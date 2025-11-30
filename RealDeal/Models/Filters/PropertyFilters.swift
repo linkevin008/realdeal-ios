@@ -8,6 +8,7 @@ struct PropertyFilters: Codable, Equatable {
     var minBedrooms: Int?
     var minBathrooms: Double?
     var sources: Set<ListingSource>?
+    var sellerId: String?
     
     init(
         priceMin: Decimal? = nil,
@@ -16,7 +17,8 @@ struct PropertyFilters: Codable, Equatable {
         locationRadius: LocationRadius? = nil,
         minBedrooms: Int? = nil,
         minBathrooms: Double? = nil,
-        sources: Set<ListingSource>? = nil
+        sources: Set<ListingSource>? = nil,
+        sellerId: String? = nil
     ) {
         self.priceMin = priceMin
         self.priceMax = priceMax
@@ -25,6 +27,7 @@ struct PropertyFilters: Codable, Equatable {
         self.minBedrooms = minBedrooms
         self.minBathrooms = minBathrooms
         self.sources = sources
+        self.sellerId = sellerId
     }
 }
 

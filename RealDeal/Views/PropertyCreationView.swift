@@ -261,25 +261,4 @@ struct PropertyCreationView_Previews: PreviewProvider {
     }
 }
 
-// Mock repository for preview
-class MockPropertyRepository: PropertyRepositoryProtocol {
-    func fetchProperties(filters: PropertyFilters?) async throws -> [Property] {
-        return []
-    }
-    
-    func createProperty(_ property: Property) async throws -> Property {
-        return property
-    }
-    
-    func updateProperty(_ property: Property) async throws {
-        // Mock implementation
-    }
-    
-    func deleteProperty(id: String) async throws {
-        // Mock implementation
-    }
-    
-    func getProperty(id: String) async throws -> Property? {
-        return nil
-    }
-}
+

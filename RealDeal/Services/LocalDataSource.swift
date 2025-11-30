@@ -56,6 +56,11 @@ class LocalDataSource: LocalDataSourceProtocol {
                     predicates.append(NSPredicate(format: "source IN %@", sourceStrings))
                 }
                 
+                // Seller ID filter
+                if let sellerId = filters.sellerId {
+                    predicates.append(NSPredicate(format: "sellerId == %@", sellerId))
+                }
+                
                 // Location radius filter
                 if let locationRadius = filters.locationRadius {
                     // Calculate bounding box for efficiency

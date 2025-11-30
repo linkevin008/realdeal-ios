@@ -513,6 +513,206 @@ final class PropertyBasedTests: XCTestCase {
         }
     }
     
+    // MARK: - Property-Based Test for Image Association Persistence
+    
+    /// Feature: real-estate-listings, Property 2: Image association persistence
+    /// Validates: Requirements 1.2
+    func testImageAssociationPersistence() {
+        // Test that uploading images results in those images being associated with the correct property when retrieved
+        property("Images uploaded with a property should be correctly associated when retrieved") <- forAll(Gen.fromElements(in: 1...5)) { (imageCount: Int) in
+            let testProperty = validPropertyGen().generate
+            let expectation = XCTestExpectation(description: "Image association persistence")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    let mockImageStorage = MockImageStorage(simulateNetworkDelay: false)
+                    
+                    // Create repository and service
+                    let repository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let listingService = PropertyListingService(
+                        repository: repository,
+                        imageStorage: mockImageStorage
+                    )
+                    
+                    // Generate valid image data for testing
+                    let imageDataArray = (0..<imageCount).map { _ in
+                        self.generateValidImageData()
+                    }
+                    
+                    // Create the property with images
+                    let createdProperty = try await listingService.createProperty(testProperty, imageDataArray: imageDataArray)
+                    
+                    // Step 1: Verify the created property has the correct number of images
+                    guard createdProperty.images.count == imageCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 2: Verify each image has a valid URL and correct order
+                    for (index, image) in createdProperty.images.enumerated() {
+                        guard !image.url.absoluteString.isEmpty,
+                              image.order == index else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 3: Retrieve the property from storage
+                    guard let retrievedProperty = try await repository.getProperty(id: createdProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 4: Verify the retrieved property has the same images
+                    guard retrievedProperty.images.count == imageCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 5: Verify each image is correctly associated (same URL and order)
+                    let sortedCreatedImages = createdProperty.images.sorted(by: { $0.order < $1.order })
+                    let sortedRetrievedImages = retrievedProperty.images.sorted(by: { $0.order < $1.order })
+                    
+                    for (createdImage, retrievedImage) in zip(sortedCreatedImages, sortedRetrievedImages) {
+                        guard createdImage.id == retrievedImage.id,
+                              createdImage.url == retrievedImage.url,
+                              createdImage.order == retrievedImage.order else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 6: Verify the images are actually stored in the image storage
+                    for image in createdProperty.images {
+                        guard mockImageStorage.getImageData(url: image.url) != nil else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // All checks passed
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Property creation or retrieval failed
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Property Deletion
+    
+    /// Feature: real-estate-listings, Property 7: Property deletion removes from storage
+    /// Validates: Requirements 2.4
+    func testPropertyDeletionRemovesFromStorage() {
+        // Test that deleting a property results in it no longer appearing in any queries or storage
+        property("Deleted property should not appear in queries or storage") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let testProperty = validPropertyGen().resize(seed).generate
+            let expectation = XCTestExpectation(description: "Property deletion removes from storage")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create repository
+                    let repository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Step 1: Create and save the property
+                    try await localDataSource.saveProperty(testProperty)
+                    
+                    // Step 2: Verify the property exists in storage
+                    guard let retrievedProperty = try await localDataSource.getProperty(id: testProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify it's the same property
+                    guard self.propertiesAreEquivalent(testProperty, retrievedProperty) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 3: Delete the property
+                    try await repository.deleteProperty(id: testProperty.id)
+                    
+                    // Step 4: Verify the property no longer exists in storage
+                    let deletedProperty = try await localDataSource.getProperty(id: testProperty.id)
+                    guard deletedProperty == nil else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 5: Verify the property doesn't appear in queries
+                    let allProperties = try await localDataSource.fetchProperties(filters: nil)
+                    let foundInQuery = allProperties.contains { $0.id == testProperty.id }
+                    guard !foundInQuery else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 6: Verify the property doesn't appear in filtered queries
+                    let filters = PropertyFilters(
+                        priceMin: testProperty.price - 1000,
+                        priceMax: testProperty.price + 1000,
+                        propertyTypes: [testProperty.propertyType],
+                        locationRadius: nil,
+                        minBedrooms: nil,
+                        minBathrooms: nil,
+                        sources: [testProperty.source]
+                    )
+                    let filteredProperties = try await localDataSource.fetchProperties(filters: filters)
+                    let foundInFilteredQuery = filteredProperties.contains { $0.id == testProperty.id }
+                    guard !foundInFilteredQuery else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - property was successfully deleted from storage
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Deletion or verification failed
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
     // MARK: - Property-Based Test for Offline Cache Accessibility
     
     /// Feature: real-estate-listings, Property 33: Offline cache accessibility
@@ -676,6 +876,29 @@ extension PropertyBasedTests {
         }
         
         return true
+    }
+    
+    /// Generate valid image data for testing (creates a minimal valid JPEG)
+    func generateValidImageData() -> Data {
+        #if canImport(UIKit)
+        // Create a small valid JPEG image
+        let size = CGSize(width: 100, height: 100)
+        
+        UIGraphicsBeginImageContext(size)
+        defer { UIGraphicsEndImageContext() }
+        
+        let context = UIGraphicsGetCurrentContext()!
+        context.setFillColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1.0)
+        context.fill(CGRect(origin: .zero, size: size))
+        
+        let image = UIGraphicsGetImageFromCurrentImageContext()!
+        return image.jpegData(compressionQuality: 0.8)!
+        #else
+        // Fallback: minimal valid JPEG header + data
+        var data = Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46])
+        data.append(Data(repeating: 0x00, count: 100))
+        return data
+        #endif
     }
     
     /// Compare two properties for equivalence (accounting for floating point precision)
@@ -1628,6 +1851,110 @@ extension PropertyBasedTests {
             }
             
             self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Seller Listing Filtering
+    
+    /// Feature: real-estate-listings, Property 5: Seller listing filtering
+    /// Validates: Requirements 2.1
+    func testSellerListingFiltering() {
+        // Test that querying for a specific seller's listings returns only listings created by that seller
+        property("Seller listing filtering should return only properties created by that seller") <- forAll(Gen.fromElements(in: 2...5)) { (sellerCount: Int) in
+            let expectation = XCTestExpectation(description: "Seller listing filtering")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Step 1: Create multiple sellers
+                    let sellerIds = (0..<sellerCount).map { "seller-\($0)-\(UUID().uuidString)" }
+                    
+                    // Step 2: Create properties for each seller (2-4 properties per seller)
+                    var allProperties: [RealDeal.Property] = []
+                    var propertiesBySeller: [String: [RealDeal.Property]] = [:]
+                    
+                    for sellerId in sellerIds {
+                        let propertyCount = Int.random(in: 2...4)
+                        let sellerProperties = (0..<propertyCount).map { _ in
+                            var property = validPropertyGen().generate
+                            property.sellerId = sellerId
+                            property.status = .active // Ensure active status
+                            return property
+                        }
+                        propertiesBySeller[sellerId] = sellerProperties
+                        allProperties.append(contentsOf: sellerProperties)
+                    }
+                    
+                    // Step 3: Save all properties to storage
+                    try await localDataSource.saveProperties(allProperties)
+                    
+                    // Step 4: For each seller, query their properties and verify filtering
+                    var allChecksPass = true
+                    
+                    for sellerId in sellerIds {
+                        // Create filter for this specific seller
+                        let filters = PropertyFilters(sellerId: sellerId)
+                        
+                        // Fetch properties for this seller
+                        let fetchedProperties = try await localDataSource.fetchProperties(filters: filters)
+                        
+                        // Get expected properties for this seller
+                        let expectedProperties = propertiesBySeller[sellerId] ?? []
+                        
+                        // Check 1: Count should match
+                        guard fetchedProperties.count == expectedProperties.count else {
+                            allChecksPass = false
+                            break
+                        }
+                        
+                        // Check 2: All fetched properties should belong to this seller
+                        let allBelongToSeller = fetchedProperties.allSatisfy { property in
+                            property.sellerId == sellerId
+                        }
+                        guard allBelongToSeller else {
+                            allChecksPass = false
+                            break
+                        }
+                        
+                        // Check 3: All expected properties should be in the fetched results
+                        let expectedIds = Set(expectedProperties.map { $0.id })
+                        let fetchedIds = Set(fetchedProperties.map { $0.id })
+                        guard expectedIds == fetchedIds else {
+                            allChecksPass = false
+                            break
+                        }
+                        
+                        // Check 4: No properties from other sellers should be included
+                        let otherSellerIds = sellerIds.filter { $0 != sellerId }
+                        for otherSellerId in otherSellerIds {
+                            let hasOtherSellerProperty = fetchedProperties.contains { property in
+                                property.sellerId == otherSellerId
+                            }
+                            guard !hasOtherSellerProperty else {
+                                allChecksPass = false
+                                break
+                            }
+                        }
+                        
+                        if !allChecksPass {
+                            break
+                        }
+                    }
+                    
+                    result = allChecksPass
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
             return result
         }
     }
