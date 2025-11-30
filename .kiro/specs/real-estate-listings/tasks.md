@@ -103,7 +103,7 @@
   - **Property 24: Seller profile display completeness**
   - **Validates: Requirements 7.3**
 
-- [ ] 8. Implement property listing creation and management
+- [x] 8. Implement property listing creation and management
   - Create PropertyListingService with CRUD operations
   - Build PropertyCreationViewModel with validation
   - Create property creation form SwiftUI view with all fields
@@ -112,7 +112,7 @@
   - Add property deletion with confirmation
   - _Requirements: 1.1, 1.2, 1.3, 1.5, 2.2, 2.3, 2.4_
 
-- [ ]* 8.1 Write property test for property creation with valid data
+- [x] 8.1 Write property test for property creation with valid data
   - **Property 1: Property creation with valid data succeeds**
   - **Validates: Requirements 1.1**
 

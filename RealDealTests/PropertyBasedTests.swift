@@ -451,6 +451,68 @@ final class PropertyBasedTests: XCTestCase {
         }
     }
     
+    // MARK: - Property-Based Test for Property Creation with Valid Data
+    
+    /// Feature: real-estate-listings, Property 1: Property creation with valid data succeeds
+    /// Validates: Requirements 1.1
+    func testPropertyCreationWithValidDataSucceeds() {
+        // Test that creating a property with valid data results in a stored listing with matching data
+        property("Property creation with valid data should succeed and persist correctly") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let testProperty = validPropertyGen().resize(seed).generate
+            let expectation = XCTestExpectation(description: "Property creation with valid data")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    let mockImageStorage = MockImageStorage()
+                    
+                    // Create repository and service
+                    let repository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let listingService = PropertyListingService(
+                        repository: repository,
+                        imageStorage: mockImageStorage
+                    )
+                    
+                    // Create the property (without images for simplicity in this test)
+                    let createdProperty = try await listingService.createProperty(testProperty, imageDataArray: [])
+                    
+                    // Verify the property was created successfully
+                    // 1. The created property should have an ID
+                    guard !createdProperty.id.isEmpty else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // 2. Retrieve the property from storage
+                    guard let retrievedProperty = try await repository.getProperty(id: createdProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // 3. Verify all data matches (the property was stored correctly)
+                    result = self.propertiesAreEquivalent(testProperty, retrievedProperty)
+                    expectation.fulfill()
+                } catch {
+                    // Property creation failed when it should have succeeded with valid data
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
     // MARK: - Property-Based Test for Offline Cache Accessibility
     
     /// Feature: real-estate-listings, Property 33: Offline cache accessibility
