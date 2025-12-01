@@ -14,7 +14,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 1.3, 1.5
     func testInvalidPropertyDataIsRejected() {
         // Test that properties with invalid data are rejected during validation
-        property("Invalid property data should be rejected") <- forAll { (seed: Int) in
+        property("Invalid property data should be rejected") <- forAll { [self] (seed: Int) in
             let invalidProperty = invalidPropertyGen().resize(seed).generate
             do {
                 try invalidProperty.validate()
@@ -31,7 +31,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 1.4
     func testPropertyPersistenceRoundTrip() {
         // Test that saving a property and retrieving it returns equivalent data
-        property("Property persistence round-trip preserves all data") <- forAll { (seed: Int) in
+        property("Property persistence round-trip preserves all data") <- forAll { [self] (seed: Int) in
             let testProperty = validPropertyGen().resize(seed).generate
             let expectation = XCTestExpectation(description: "Property persistence round-trip")
             var result = false
@@ -72,7 +72,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 7.1
     func testProfilePersistenceRoundTrip() {
         // Test that saving a profile and retrieving it returns equivalent data
-        property("Profile persistence round-trip preserves all data") <- forAll { (seed: Int) in
+        property("Profile persistence round-trip preserves all data") <- forAll { [self] (seed: Int) in
             let testProfile = validUserProfileGen().resize(seed).generate
             let expectation = XCTestExpectation(description: "Profile persistence round-trip")
             var result = false
@@ -231,7 +231,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 6.1
     func testValidCredentialsAuthenticateSuccessfully() {
         // Test that valid credentials successfully authenticate and grant access
-        property("Valid credentials should authenticate successfully") <- forAll { (seed: Int) in
+        property("Valid credentials should authenticate successfully") <- forAll { [self] (seed: Int) in
             let credentials = validCredentialsGen().resize(seed).generate
             let expectation = XCTestExpectation(description: "Valid credentials authentication")
             var result = false
@@ -299,7 +299,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 6.2
     func testInvalidCredentialsAreRejected() {
         // Test that invalid credentials are rejected with appropriate error
-        property("Invalid credentials should be rejected") <- forAll { (seed: Int) in
+        property("Invalid credentials should be rejected") <- forAll { [self] (seed: Int) in
             let invalidCreds = invalidCredentialsGen().resize(seed).generate
             let expectation = XCTestExpectation(description: "Invalid credentials rejection")
             var result = false
@@ -362,7 +362,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 6.3
     func testRegistrationValidationEnforcement() {
         // Test that invalid registration data is rejected with appropriate validation errors
-        property("Invalid registration data should be rejected") <- forAll { (seed: Int) in
+        property("Invalid registration data should be rejected") <- forAll { [self] (seed: Int) in
             let invalidReg = invalidRegistrationDataGen().resize(abs(seed)).generate
             let expectation = XCTestExpectation(description: "Invalid registration rejection")
             var result = false
@@ -406,7 +406,7 @@ final class PropertyBasedTests: XCTestCase {
         }
         
         // Test that valid registration data is accepted
-        property("Valid registration data should be accepted") <- forAll { (seed: Int) in
+        property("Valid registration data should be accepted") <- forAll { [self] (seed: Int) in
             let validReg = validRegistrationDataGen().resize(abs(seed)).generate
             let expectation = XCTestExpectation(description: "Valid registration acceptance")
             var result = false
@@ -722,7 +722,25 @@ final class PropertyBasedTests: XCTestCase {
         // Test that previously loaded properties remain accessible from cache when offline
         // This tests the core cache functionality that enables offline access
         property("Previously loaded properties should be accessible from cache when offline") <- forAll(Gen.fromElements(in: 1...10)) { (propertyCount: Int) in
-            let testProperties = (0..<propertyCount).map { _ in validPropertyGen().generate }
+            // Generate properties with guaranteed unique IDs
+            let testProperties = (0..<propertyCount).map { index in
+                let baseProperty = validPropertyGen().generate
+                return RealDeal.Property(
+                    id: "test-property-\(index)-\(UUID().uuidString)",
+                    address: baseProperty.address,
+                    price: baseProperty.price,
+                    propertyType: baseProperty.propertyType,
+                    description: baseProperty.description,
+                    specifications: baseProperty.specifications,
+                    images: baseProperty.images,
+                    location: baseProperty.location,
+                    source: baseProperty.source,
+                    sellerId: baseProperty.sellerId,
+                    status: baseProperty.status,
+                    createdAt: baseProperty.createdAt,
+                    updatedAt: baseProperty.updatedAt
+                )
+            }
             let expectation = XCTestExpectation(description: "Offline cache accessibility")
             var result = false
             
@@ -1981,8 +1999,14 @@ func validJPEGImageDataGen() -> Gen<Data> {
         return image.jpegData(compressionQuality: 0.8)!
     }
     #else
-    // Fallback for non-UIKit platforms: generate minimal JPEG header
-    Gen.pure(Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]))
+    // Fallback for non-UIKit platforms: generate JPEG data that meets minimum size (1KB)
+    Gen.pure({
+        var data = Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]) // JPEG header
+        // Pad with valid JPEG data to meet 1KB minimum
+        data.append(Data(repeating: 0x00, count: 1024 - data.count))
+        data.append(Data([0xFF, 0xD9])) // JPEG end marker
+        return data
+    }())
     #endif
 }
 
@@ -2009,8 +2033,13 @@ func validPNGImageDataGen() -> Gen<Data> {
         return image.pngData()!
     }
     #else
-    // Fallback for non-UIKit platforms: generate minimal PNG header
-    Gen.pure(Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+    // Fallback for non-UIKit platforms: generate PNG data that meets minimum size (1KB)
+    Gen.pure({
+        var data = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) // PNG header
+        // Pad with valid PNG data to meet 1KB minimum
+        data.append(Data(repeating: 0x00, count: 1024 - data.count))
+        return data
+    }())
     #endif
 }
 

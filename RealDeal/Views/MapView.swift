@@ -3,14 +3,18 @@ import SwiftUI
 import MapKit
 
 /// Map view displaying property listings with markers and clustering
-@available(iOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, *)
 struct MapView: View {
     @StateObject private var viewModel: MapViewModel
     @StateObject private var locationManager: LocationManager
     @State private var showingFilters = false
     @State private var filterViewModel: PropertyListViewModel
+    private let propertyRepository: PropertyRepositoryProtocol
+    private let userProfileRepository: UserProfileRepositoryProtocol
     
-    init(repository: PropertyRepositoryProtocol) {
+    init(repository: PropertyRepositoryProtocol, userProfileRepository: UserProfileRepositoryProtocol) {
+        self.propertyRepository = repository
+        self.userProfileRepository = userProfileRepository
         let locationManager = LocationManager()
         _locationManager = StateObject(wrappedValue: locationManager)
         _viewModel = StateObject(wrappedValue: MapViewModel(
@@ -66,7 +70,7 @@ struct MapView: View {
             if let property = viewModel.selectedProperty {
                 VStack {
                     Spacer()
-                    PropertyPreviewCard(property: property, repository: viewModel.repository) {
+                    PropertyPreviewCard(property: property, propertyRepository: propertyRepository, userProfileRepository: userProfileRepository) {
                         viewModel.deselectProperty()
                     }
                     .padding()
@@ -108,7 +112,7 @@ struct MapView: View {
 
 #if canImport(UIKit)
 /// UIKit MapView wrapper for SwiftUI
-@available(iOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, *)
 struct MapViewRepresentable: UIViewRepresentable {
     @ObservedObject var viewModel: MapViewModel
     @ObservedObject var locationManager: LocationManager
@@ -208,7 +212,7 @@ struct MapViewRepresentable: UIViewRepresentable {
 
 #if canImport(UIKit)
 /// Custom marker view for individual properties
-@available(iOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, *)
 class PropertyMarkerView: MKMarkerAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
@@ -224,7 +228,7 @@ class PropertyMarkerView: MKMarkerAnnotationView {
 }
 
 /// Custom cluster view for grouped properties
-@available(iOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, *)
 class PropertyClusterView: MKMarkerAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
@@ -248,14 +252,15 @@ class PropertyClusterView: MKMarkerAnnotationView {
 }
 
 /// Property preview card shown when a marker is selected
-@available(iOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, *)
 struct PropertyPreviewCard: View {
     let property: Property
-    let repository: PropertyRepositoryProtocol
+    let propertyRepository: PropertyRepositoryProtocol
+    let userProfileRepository: UserProfileRepositoryProtocol
     let onDismiss: () -> Void
     
     var body: some View {
-        NavigationLink(destination: PropertyDetailView(viewModel: PropertyDetailViewModel(property: property, repository: repository))) {
+        NavigationLink(destination: PropertyDetailView(viewModel: PropertyDetailViewModel(property: property, propertyRepository: propertyRepository, userProfileRepository: userProfileRepository))) {
             HStack(spacing: 12) {
                 // Property image
                 if let firstImage = property.images.first {

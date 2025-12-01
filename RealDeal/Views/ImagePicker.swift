@@ -4,7 +4,7 @@ import UIKit
 import PhotosUI
 
 /// SwiftUI wrapper for UIImagePickerController
-@available(iOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, *)
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var imageData: Data?
     @Environment(\.presentationMode) var presentationMode

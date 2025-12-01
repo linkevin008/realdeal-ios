@@ -19,8 +19,11 @@ let package = Package(
             name: "RealDeal",
             dependencies: [],
             path: "RealDeal",
-            exclude: ["RealDealApp.swift", "ContentView.swift", "Info.plist", "Assets.xcassets"],
-            resources: [.process("RealDeal.xcdatamodeld")]),
+            exclude: ["Info.plist", "RealDealApp.swift"],
+            resources: [
+                .process("RealDeal.xcdatamodeld"),
+                .process("Assets.xcassets")
+            ]),
         .testTarget(
             name: "RealDealTests",
             dependencies: [

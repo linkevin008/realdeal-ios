@@ -1,6 +1,6 @@
 import SwiftUI
 
-@available(iOS 17.0, macOS 10.15, *)
+@available(iOS 17.0, macOS 12.0, *)
 struct ContentView: View {
     // Initialize repositories
     private let persistenceController = PersistenceController.shared
@@ -76,7 +76,7 @@ struct ContentView: View {
     }
 }
 
-@available(iOS 17.0, macOS 10.15, *)
+@available(iOS 17.0, macOS 12.0, *)
 #Preview {
     ContentView()
         .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)

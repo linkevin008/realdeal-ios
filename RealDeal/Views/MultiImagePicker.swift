@@ -5,7 +5,7 @@ import UIKit
 import PhotosUI
 
 /// SwiftUI wrapper for PHPickerViewController with multi-select support
-@available(iOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, *)
 struct MultiImagePicker: UIViewControllerRepresentable {
     @Binding var imageDataArray: [Data]
     @Environment(\.presentationMode) var presentationMode
