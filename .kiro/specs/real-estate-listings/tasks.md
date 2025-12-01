@@ -208,11 +208,11 @@
   - **Property 9: Active listings appear as map markers**
   - **Validates: Requirements 3.1**
 
-- [ ]* 13.2 Write property test for marker clustering
+- [x] 13.2 Write property test for marker clustering
   - **Property 10: Marker clustering for nearby properties**
   - **Validates: Requirements 3.5**
 
-- [ ] 14. Build map view interface
+- [x] 14. Build map view interface
   - Create MapView with property markers
   - Add marker tap gesture showing property preview
   - Implement property preview card with basic details

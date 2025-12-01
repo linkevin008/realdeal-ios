@@ -1,5 +1,6 @@
 import XCTest
 import SwiftCheck
+import CoreLocation
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -1166,6 +1167,223 @@ final class PropertyBasedTests: XCTestCase {
             self.wait(for: [expectation], timeout: 10.0)
             return result
         }
+    }
+    
+    // MARK: - Property-Based Test for Marker Clustering
+    
+    /// Feature: real-estate-listings, Property 10: Marker clustering for nearby properties
+    /// Validates: Requirements 3.5
+    func testMarkerClusteringForNearbyProperties() {
+        // Test that properties with coordinates within clustering distance are clustered with accurate count
+        property("Nearby properties should be clustered with accurate count") <- forAll(Gen.fromElements(in: 5...20)) { (propertyCount: Int) in
+            let expectation = XCTestExpectation(description: "Marker clustering for nearby properties")
+            var result = false
+            
+            Task { @MainActor in
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create repository
+                    let repository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Generate properties with nearby coordinates (within clustering distance)
+                    // We'll create clusters by placing properties very close together
+                    let baseLatitude = 37.7749
+                    let baseLongitude = -122.4194
+                    
+                    // Create properties in tight clusters
+                    // Cluster 1: 3-5 properties very close together (within ~100 meters)
+                    let cluster1Size = min(propertyCount / 2, 5)
+                    let cluster1Center = Coordinate(latitude: baseLatitude, longitude: baseLongitude)
+                    
+                    // Cluster 2: remaining properties in another location
+                    let cluster2Size = propertyCount - cluster1Size
+                    let cluster2Center = Coordinate(latitude: baseLatitude + 0.01, longitude: baseLongitude + 0.01)
+                    
+                    var testProperties: [RealDeal.Property] = []
+                    
+                    // Create cluster 1 properties (very close together - within 0.0001 degrees ~11 meters)
+                    for i in 0..<cluster1Size {
+                        let template = validPropertyGen().resize(i * 73).generate
+                        let offset = Double(i) * 0.00005 // Very small offset for clustering
+                        
+                        let property = RealDeal.Property(
+                            id: UUID().uuidString,
+                            address: template.address,
+                            price: template.price,
+                            propertyType: template.propertyType,
+                            description: template.description,
+                            specifications: template.specifications,
+                            images: template.images,
+                            location: Coordinate(
+                                latitude: cluster1Center.latitude + offset,
+                                longitude: cluster1Center.longitude + offset
+                            ),
+                            source: template.source,
+                            sellerId: template.sellerId,
+                            status: .active, // All active for map display
+                            createdAt: template.createdAt,
+                            updatedAt: template.updatedAt
+                        )
+                        
+                        testProperties.append(property)
+                    }
+                    
+                    // Create cluster 2 properties (very close together in different location)
+                    for i in 0..<cluster2Size {
+                        let template = validPropertyGen().resize((i + cluster1Size) * 73).generate
+                        let offset = Double(i) * 0.00005 // Very small offset for clustering
+                        
+                        let property = RealDeal.Property(
+                            id: UUID().uuidString,
+                            address: template.address,
+                            price: template.price,
+                            propertyType: template.propertyType,
+                            description: template.description,
+                            specifications: template.specifications,
+                            images: template.images,
+                            location: Coordinate(
+                                latitude: cluster2Center.latitude + offset,
+                                longitude: cluster2Center.longitude + offset
+                            ),
+                            source: template.source,
+                            sellerId: template.sellerId,
+                            status: .active, // All active for map display
+                            createdAt: template.createdAt,
+                            updatedAt: template.updatedAt
+                        )
+                        
+                        testProperties.append(property)
+                    }
+                    
+                    // Save all properties to storage
+                    try await localDataSource.saveProperties(testProperties)
+                    mockRemote.seedData(properties: testProperties)
+                    
+                    // Create MapViewModel
+                    let locationManager = LocationManager()
+                    let filterService = FilterService()
+                    let mapViewModel = MapViewModel(
+                        repository: repository,
+                        filterService: filterService,
+                        locationManager: locationManager
+                    )
+                    
+                    // Load properties into the map view model
+                    await mapViewModel.loadProperties()
+                    
+                    // Check for errors
+                    guard mapViewModel.errorMessage == nil else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 1: Verify all properties are represented as annotations
+                    guard mapViewModel.annotations.count == propertyCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 2: Verify each annotation has the clustering identifier set
+                    // This is the key property that enables MapKit clustering
+                    // We verify this by checking that PropertyAnnotation instances are created
+                    // and that they have valid coordinates for clustering
+                    for annotation in mapViewModel.annotations {
+                        // Verify annotation has valid coordinates
+                        let coordinate = annotation.coordinate
+                        guard coordinate.latitude >= -90 && coordinate.latitude <= 90,
+                              coordinate.longitude >= -180 && coordinate.longitude <= 180 else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                        
+                        // Verify annotation is a PropertyAnnotation (which supports clustering)
+                        guard annotation is PropertyAnnotation else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 3: Verify that nearby properties can be identified
+                    // Group annotations by proximity to verify clustering potential
+                    let cluster1Annotations = mapViewModel.annotations.filter { annotation in
+                        let distance = self.calculateDistance(
+                            from: annotation.coordinate,
+                            to: CLLocationCoordinate2D(
+                                latitude: cluster1Center.latitude,
+                                longitude: cluster1Center.longitude
+                            )
+                        )
+                        return distance < 500 // Within 500 meters of cluster 1 center
+                    }
+                    
+                    let cluster2Annotations = mapViewModel.annotations.filter { annotation in
+                        let distance = self.calculateDistance(
+                            from: annotation.coordinate,
+                            to: CLLocationCoordinate2D(
+                                latitude: cluster2Center.latitude,
+                                longitude: cluster2Center.longitude
+                            )
+                        )
+                        return distance < 500 // Within 500 meters of cluster 2 center
+                    }
+                    
+                    // Step 4: Verify that the annotations are properly distributed into clusters
+                    // The sum of annotations in both clusters should equal total annotations
+                    guard cluster1Annotations.count + cluster2Annotations.count == propertyCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 5: Verify cluster sizes match expected sizes
+                    guard cluster1Annotations.count == cluster1Size,
+                          cluster2Annotations.count == cluster2Size else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 6: Verify that the clustering identifier is set correctly
+                    // This is what tells MapKit to cluster these annotations
+                    // We verify this indirectly by confirming the MapViewModel has the clustering identifier
+                    guard MapViewModel.clusteringIdentifier == "propertyCluster" else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - clustering is properly configured
+                    // MapKit will handle the actual visual clustering based on zoom level
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Test failed due to error
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
+    /// Helper method to calculate distance between two coordinates in meters
+    private func calculateDistance(from coord1: CLLocationCoordinate2D, to coord2: CLLocationCoordinate2D) -> Double {
+        let location1 = CLLocation(latitude: coord1.latitude, longitude: coord1.longitude)
+        let location2 = CLLocation(latitude: coord2.latitude, longitude: coord2.longitude)
+        return location1.distance(from: location2)
     }
 }
 

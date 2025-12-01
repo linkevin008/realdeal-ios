@@ -9,22 +9,21 @@ struct PersistenceController {
         return controller
     }()
     
-    let container: NSPersistentContainer
+    var container: NSPersistentContainer
     
     init(inMemory: Bool = false) {
         // Try to load the model from various bundle locations
         let managedObjectModel: NSManagedObjectModel
         
-        if let modelURL = Bundle.module.url(forResource: "RealDeal", withExtension: "momd"),
+        if let modelURL = Bundle.main.url(forResource: "RealDeal", withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: modelURL) {
-            managedObjectModel = model
-        } else if let modelURL = Bundle.main.url(forResource: "RealDeal", withExtension: "momd"),
-                  let model = NSManagedObjectModel(contentsOf: modelURL) {
             managedObjectModel = model
         } else {
             // Create model programmatically as fallback
             managedObjectModel = Self.createModel()
         }
+        
+        container = NSPersistentContainer(name: "RealDeal", managedObjectModel: managedObjectModel)
         
         container = NSPersistentContainer(name: "RealDeal", managedObjectModel: managedObjectModel)
         
