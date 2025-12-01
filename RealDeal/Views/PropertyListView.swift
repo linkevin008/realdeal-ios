@@ -73,15 +73,23 @@ struct PropertyListView: View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 ForEach(viewModel.properties) { property in
-                    PropertyCardView(property: property)
-                        .onAppear {
-                            // Load more when reaching the last item
-                            if property.id == viewModel.properties.last?.id {
-                                Task {
-                                    await viewModel.loadMoreProperties()
-                                }
+                    PropertyCardView(
+                        property: property,
+                        isFavorite: viewModel.isFavorite(propertyId: property.id),
+                        onFavoriteToggle: {
+                            Task {
+                                await viewModel.toggleFavorite(propertyId: property.id)
                             }
                         }
+                    )
+                    .onAppear {
+                        // Load more when reaching the last item
+                        if property.id == viewModel.properties.last?.id {
+                            Task {
+                                await viewModel.loadMoreProperties()
+                            }
+                        }
+                    }
                 }
                 
                 if viewModel.isLoading {
@@ -101,49 +109,68 @@ struct PropertyListView: View {
 @available(iOS 15.0, macOS 12.0, *)
 struct PropertyCardView: View {
     let property: Property
+    var isFavorite: Bool = false
+    var onFavoriteToggle: (() -> Void)? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Property image
-            if let firstImage = property.images.first {
-                AsyncImage(url: firstImage.url) { phase in
-                    switch phase {
-                    case .empty:
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 200)
-                            .overlay(ProgressView())
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(height: 200)
-                            .clipped()
-                    case .failure:
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 200)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .font(.largeTitle)
-                                    .foregroundColor(.gray)
-                            )
-                    @unknown default:
-                        EmptyView()
+            // Property image with favorite button overlay
+            ZStack(alignment: .topTrailing) {
+                if let firstImage = property.images.first {
+                    AsyncImage(url: firstImage.url) { phase in
+                        switch phase {
+                        case .empty:
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(height: 200)
+                                .overlay(ProgressView())
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 200)
+                                .clipped()
+                        case .failure:
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(height: 200)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.largeTitle)
+                                        .foregroundColor(.gray)
+                                )
+                        @unknown default:
+                            EmptyView()
+                        }
                     }
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 200)
+                        .overlay(
+                            Image(systemName: "house")
+                                .font(.largeTitle)
+                                .foregroundColor(.gray)
+                        )
                 }
-                .cornerRadius(12)
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(height: 200)
-                    .overlay(
-                        Image(systemName: "house")
-                            .font(.largeTitle)
-                            .foregroundColor(.gray)
+                
+                // Favorite button overlay
+                if let onFavoriteToggle = onFavoriteToggle {
+                    FavoriteButton(
+                        isFavorite: isFavorite,
+                        action: onFavoriteToggle,
+                        size: 24
                     )
-                    .cornerRadius(12)
+                    .padding(8)
+                    .background(
+                        Circle()
+                            .fill(Color.white.opacity(0.9))
+                            .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+                    )
+                    .padding(8)
+                }
             }
+            .cornerRadius(12)
             
             // Property details
             VStack(alignment: .leading, spacing: 8) {
@@ -190,7 +217,11 @@ struct PropertyCardView: View {
             }
             .padding(.horizontal, 4)
         }
-        .background(Color(white: 1.0))
+        #if os(iOS)
+        .background(Color(.systemBackground))
+        #else
+        .background(Color.white)
+        #endif
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
     }

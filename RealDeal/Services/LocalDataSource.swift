@@ -283,6 +283,22 @@ class LocalDataSource: LocalDataSourceProtocol {
         }
     }
     
+    func deleteFavoritesByPropertyId(propertyId: String) async throws {
+        try await context.perform {
+            let request = FavoriteEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "propertyId == %@", propertyId)
+            
+            let entities = try self.context.fetch(request)
+            for entity in entities {
+                self.context.delete(entity)
+            }
+            
+            if !entities.isEmpty {
+                try self.context.save()
+            }
+        }
+    }
+    
     // MARK: - Mapping Helpers
     
     private func mapToProperty(_ entity: PropertyEntity) throws -> Property {

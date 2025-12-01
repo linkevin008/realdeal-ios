@@ -17,5 +17,6 @@ protocol LocalDataSourceProtocol {
     func saveFavorite(_ favorite: Favorite) async throws
     func getFavorites(userId: String) async throws -> [Favorite]
     func deleteFavorite(id: String) async throws
+    func deleteFavoritesByPropertyId(propertyId: String) async throws
     func isFavorite(propertyId: String, userId: String) async throws -> Bool
 }

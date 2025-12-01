@@ -220,7 +220,7 @@
   - Integrate filter controls with map view
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 15. Implement favorites functionality
+- [x] 15. Implement favorites functionality
   - Create FavoritesService with add/remove operations
   - Build FavoritesViewModel managing favorites state
   - Add favorite button to property cards and detail view
@@ -229,23 +229,23 @@
   - Show favorite status indicator on all property views
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ]* 15.1 Write property test for favorite addition
+- [x] 15.1 Write property test for favorite addition
   - **Property 34: Favorite addition**
   - **Validates: Requirements 11.1**
 
-- [ ]* 15.2 Write property test for favorites retrieval
+- [x] 15.2 Write property test for favorites retrieval
   - **Property 35: Favorites retrieval completeness**
   - **Validates: Requirements 11.2**
 
-- [ ]* 15.3 Write property test for favorite removal
+- [x] 15.3 Write property test for favorite removal
   - **Property 36: Favorite removal**
   - **Validates: Requirements 11.3**
 
-- [ ]* 15.4 Write property test for cascading favorite deletion
+- [x] 15.4 Write property test for cascading favorite deletion
   - **Property 37: Cascading favorite deletion**
   - **Validates: Requirements 11.4**
 
-- [ ]* 15.5 Write property test for favorite status indication
+- [x] 15.5 Write property test for favorite status indication
   - **Property 38: Favorite status indication**
   - **Validates: Requirements 11.5**
 

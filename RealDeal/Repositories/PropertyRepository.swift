@@ -71,7 +71,10 @@ class PropertyRepository: PropertyRepositoryProtocol {
     }
     
     func deleteProperty(id: String) async throws {
-        // Delete locally first
+        // Delete associated favorites first (cascading delete)
+        try await localDataSource.deleteFavoritesByPropertyId(propertyId: id)
+        
+        // Delete the property locally
         try await localDataSource.deleteProperty(id: id)
         
         // Try to sync with remote if connected

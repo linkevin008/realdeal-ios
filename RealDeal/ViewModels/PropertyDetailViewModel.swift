@@ -13,22 +13,29 @@ class PropertyDetailViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedImageIndex: Int = 0
     @Published var isShowingFullScreenImage: Bool = false
+    @Published var isFavorite: Bool = false
     
     // MARK: - Properties
     
     private let propertyRepository: PropertyRepositoryProtocol
     private let userProfileRepository: UserProfileRepositoryProtocol
+    private let favoritesRepository: FavoritesRepositoryProtocol?
+    private let currentUserId: String?
     
     // MARK: - Initialization
     
     init(
         property: Property,
         propertyRepository: PropertyRepositoryProtocol,
-        userProfileRepository: UserProfileRepositoryProtocol
+        userProfileRepository: UserProfileRepositoryProtocol,
+        favoritesRepository: FavoritesRepositoryProtocol? = nil,
+        currentUserId: String? = nil
     ) {
         self.property = property
         self.propertyRepository = propertyRepository
         self.userProfileRepository = userProfileRepository
+        self.favoritesRepository = favoritesRepository
+        self.currentUserId = currentUserId
     }
     
     // MARK: - Actions
@@ -51,6 +58,49 @@ class PropertyDetailViewModel: ObservableObject {
         }
         
         isLoadingProfile = false
+    }
+    
+    /// Check if property is favorited
+    func checkFavoriteStatus() async {
+        guard let favoritesRepository = favoritesRepository,
+              let userId = currentUserId else {
+            return
+        }
+        
+        do {
+            isFavorite = try await favoritesRepository.isFavorite(propertyId: property.id, userId: userId)
+        } catch {
+            // Silently fail - not critical
+            isFavorite = false
+        }
+    }
+    
+    /// Toggle favorite status
+    func toggleFavorite() async {
+        guard let favoritesRepository = favoritesRepository,
+              let userId = currentUserId else {
+            return
+        }
+        
+        do {
+            if isFavorite {
+                // Find and remove the favorite
+                let favorites = try await favoritesRepository.fetchFavorites(userId: userId)
+                if let favorite = favorites.first(where: { $0.propertyId == property.id }) {
+                    try await favoritesRepository.removeFavorite(id: favorite.id)
+                    isFavorite = false
+                }
+            } else {
+                // Add to favorites
+                let favorite = Favorite(userId: userId, propertyId: property.id)
+                try await favoritesRepository.addFavorite(favorite)
+                isFavorite = true
+            }
+        } catch let error as AppError {
+            errorMessage = error.userMessage
+        } catch {
+            errorMessage = "Failed to update favorite status."
+        }
     }
     
     /// Refresh property data

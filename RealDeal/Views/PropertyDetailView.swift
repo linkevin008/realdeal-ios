@@ -25,15 +25,29 @@ struct PropertyDetailView: View {
                 
                 // Property Information
                 VStack(alignment: .leading, spacing: 20) {
-                    // Price and Address
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(viewModel.formattedPrice)
-                            .font(.title)
-                            .fontWeight(.bold)
+                    // Price, Address, and Favorite Button
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(viewModel.formattedPrice)
+                                .font(.title)
+                                .fontWeight(.bold)
+                            
+                            Text(viewModel.formattedAddress)
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
                         
-                        Text(viewModel.formattedAddress)
-                            .font(.headline)
-                            .foregroundColor(.secondary)
+                        Spacer()
+                        
+                        FavoriteButton(
+                            isFavorite: viewModel.isFavorite,
+                            action: {
+                                Task {
+                                    await viewModel.toggleFavorite()
+                                }
+                            },
+                            size: 28
+                        )
                     }
                     .padding(.horizontal)
                     .padding(.top)
@@ -139,10 +153,12 @@ struct PropertyDetailView: View {
         }
         .task {
             await viewModel.loadSellerProfile()
+            await viewModel.checkFavoriteStatus()
         }
         .refreshable {
             await viewModel.refreshProperty()
             await viewModel.loadSellerProfile()
+            await viewModel.checkFavoriteStatus()
         }
     }
 }

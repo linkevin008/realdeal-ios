@@ -12,11 +12,14 @@ class PropertyListViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var filters: PropertyFilters = PropertyFilters()
+    @Published var favoritePropertyIds: Set<String> = []
     
     // MARK: - Properties
     
     private let repository: PropertyRepositoryProtocol
     private let filterService: FilterService
+    private let favoritesRepository: FavoritesRepositoryProtocol?
+    private let currentUserId: String?
     private var currentPage: Int = 0
     private let pageSize: Int = 20
     private var hasMorePages: Bool = true
@@ -25,10 +28,14 @@ class PropertyListViewModel: ObservableObject {
     
     init(
         repository: PropertyRepositoryProtocol,
-        filterService: FilterService = FilterService()
+        filterService: FilterService = FilterService(),
+        favoritesRepository: FavoritesRepositoryProtocol? = nil,
+        currentUserId: String? = nil
     ) {
         self.repository = repository
         self.filterService = filterService
+        self.favoritesRepository = favoritesRepository
+        self.currentUserId = currentUserId
     }
     
     // MARK: - Actions
@@ -54,6 +61,9 @@ class PropertyListViewModel: ObservableObject {
             properties = Array(filteredProperties.prefix(pageSize))
             hasMorePages = filteredProperties.count > pageSize
             
+            // Load favorite status
+            await loadFavoriteStatus()
+            
         } catch let error as AppError {
             errorMessage = error.userMessage
             properties = []
@@ -63,6 +73,54 @@ class PropertyListViewModel: ObservableObject {
         }
         
         isLoading = false
+    }
+    
+    /// Load favorite status for current user
+    private func loadFavoriteStatus() async {
+        guard let favoritesRepository = favoritesRepository,
+              let userId = currentUserId else {
+            return
+        }
+        
+        do {
+            let favorites = try await favoritesRepository.fetchFavorites(userId: userId)
+            favoritePropertyIds = Set(favorites.map { $0.propertyId })
+        } catch {
+            // Silently fail - not critical
+            favoritePropertyIds = []
+        }
+    }
+    
+    /// Toggle favorite status for a property
+    func toggleFavorite(propertyId: String) async {
+        guard let favoritesRepository = favoritesRepository,
+              let userId = currentUserId else {
+            return
+        }
+        
+        do {
+            if favoritePropertyIds.contains(propertyId) {
+                // Remove from favorites
+                let favorites = try await favoritesRepository.fetchFavorites(userId: userId)
+                if let favorite = favorites.first(where: { $0.propertyId == propertyId }) {
+                    try await favoritesRepository.removeFavorite(id: favorite.id)
+                    favoritePropertyIds.remove(propertyId)
+                }
+            } else {
+                // Add to favorites
+                let favorite = Favorite(userId: userId, propertyId: propertyId)
+                try await favoritesRepository.addFavorite(favorite)
+                favoritePropertyIds.insert(propertyId)
+            }
+        } catch {
+            // Silently fail or show error
+            errorMessage = "Failed to update favorite status."
+        }
+    }
+    
+    /// Check if a property is favorited
+    func isFavorite(propertyId: String) -> Bool {
+        favoritePropertyIds.contains(propertyId)
     }
     
     /// Refresh properties (pull-to-refresh)

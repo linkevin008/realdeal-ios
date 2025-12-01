@@ -1187,6 +1187,908 @@ final class PropertyBasedTests: XCTestCase {
         }
     }
     
+    // MARK: - Property-Based Test for Favorite Addition
+    
+    /// Feature: real-estate-listings, Property 34: Favorite addition
+    /// Validates: Requirements 11.1
+    func testFavoriteAddition() {
+        // Test that marking a property as favorite adds it to the buyer's favorites list
+        property("Marking a property as favorite should add it to the buyer's favorites list") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let testProperty = validPropertyGen().resize(seed).generate
+            let testUserId = "test-user-\(seed)"
+            let expectation = XCTestExpectation(description: "Favorite addition")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Seed the mock remote data source with the test property
+                    // This is necessary because addFavorite checks if the property exists
+                    mockRemote.seedData(properties: [testProperty])
+                    
+                    // Create repository
+                    let repository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Step 1: Verify the property is not initially favorited
+                    let initiallyFavorited = try await repository.isFavorite(propertyId: testProperty.id, userId: testUserId)
+                    guard !initiallyFavorited else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 2: Create a favorite
+                    let favorite = Favorite(
+                        userId: testUserId,
+                        propertyId: testProperty.id
+                    )
+                    
+                    // Step 3: Add the favorite
+                    try await repository.addFavorite(favorite)
+                    
+                    // Step 4: Verify the property is now favorited
+                    let nowFavorited = try await repository.isFavorite(propertyId: testProperty.id, userId: testUserId)
+                    guard nowFavorited else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 5: Retrieve the user's favorites list
+                    let favorites = try await repository.fetchFavorites(userId: testUserId)
+                    
+                    // Step 6: Verify the favorite appears in the list
+                    guard favorites.count > 0 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 7: Verify the favorite has the correct property ID and user ID
+                    let addedFavorite = favorites.first { $0.propertyId == testProperty.id && $0.userId == testUserId }
+                    guard let foundFavorite = addedFavorite else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 8: Verify the favorite has a valid ID and savedAt timestamp
+                    guard !foundFavorite.id.isEmpty,
+                          foundFavorite.savedAt <= Date() else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - favorite was successfully added
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Favorite addition failed
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Favorites Retrieval
+    
+    /// Feature: real-estate-listings, Property 35: Favorites retrieval completeness
+    /// Validates: Requirements 11.2
+    func testFavoritesRetrievalCompleteness() {
+        // Test that querying a buyer's favorites returns all favorited property listings
+        property("Querying favorites should return all favorited properties") <- forAll(Gen.fromElements(in: 1...10)) { (favoriteCount: Int) in
+            let testUserId = "test-user-\(UUID().uuidString)"
+            let expectation = XCTestExpectation(description: "Favorites retrieval completeness")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Step 1: Generate multiple properties
+                    let testProperties = (0..<favoriteCount).map { index in
+                        let baseProperty = validPropertyGen().resize(index * 73).generate
+                        return RealDeal.Property(
+                            id: "property-\(index)-\(UUID().uuidString)",
+                            address: baseProperty.address,
+                            price: baseProperty.price,
+                            propertyType: baseProperty.propertyType,
+                            description: baseProperty.description,
+                            specifications: baseProperty.specifications,
+                            images: baseProperty.images,
+                            location: baseProperty.location,
+                            source: baseProperty.source,
+                            sellerId: baseProperty.sellerId,
+                            status: baseProperty.status,
+                            createdAt: baseProperty.createdAt,
+                            updatedAt: baseProperty.updatedAt
+                        )
+                    }
+                    
+                    // Seed the mock remote data source with test properties
+                    mockRemote.seedData(properties: testProperties)
+                    
+                    // Create repository
+                    let repository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Step 2: Add all properties to favorites
+                    var addedFavorites: [Favorite] = []
+                    for property in testProperties {
+                        let favorite = Favorite(
+                            userId: testUserId,
+                            propertyId: property.id
+                        )
+                        try await repository.addFavorite(favorite)
+                        addedFavorites.append(favorite)
+                    }
+                    
+                    // Step 3: Retrieve the user's favorites
+                    let retrievedFavorites = try await repository.fetchFavorites(userId: testUserId)
+                    
+                    // Step 4: Verify the count matches the number of favorites added
+                    guard retrievedFavorites.count == favoriteCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 5: Verify all added favorites are present in the retrieved list
+                    let retrievedPropertyIds = Set(retrievedFavorites.map { $0.propertyId })
+                    let expectedPropertyIds = Set(testProperties.map { $0.id })
+                    
+                    guard retrievedPropertyIds == expectedPropertyIds else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 6: Verify each retrieved favorite has the correct user ID
+                    let allHaveCorrectUserId = retrievedFavorites.allSatisfy { $0.userId == testUserId }
+                    guard allHaveCorrectUserId else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 7: Verify each retrieved favorite has a valid ID
+                    let allHaveValidIds = retrievedFavorites.allSatisfy { !$0.id.isEmpty }
+                    guard allHaveValidIds else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 8: Verify each retrieved favorite has a valid savedAt timestamp
+                    let now = Date()
+                    let allHaveValidTimestamps = retrievedFavorites.allSatisfy { $0.savedAt <= now }
+                    guard allHaveValidTimestamps else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 9: Verify no duplicate favorites are returned
+                    let uniqueFavoriteIds = Set(retrievedFavorites.map { $0.id })
+                    guard uniqueFavoriteIds.count == retrievedFavorites.count else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 10: Verify that each property ID appears exactly once
+                    for propertyId in expectedPropertyIds {
+                        let matchingFavorites = retrievedFavorites.filter { $0.propertyId == propertyId }
+                        guard matchingFavorites.count == 1 else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // All checks passed - all favorited properties were retrieved correctly
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Favorites retrieval failed
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+        
+        // Test edge case: Empty favorites list
+        property("User with no favorites should return empty list") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let testUserId = "empty-user-\(seed)"
+            let expectation = XCTestExpectation(description: "Empty favorites list")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create repository
+                    let repository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Retrieve favorites for a user who hasn't favorited anything
+                    let favorites = try await repository.fetchFavorites(userId: testUserId)
+                    
+                    // Should return an empty list
+                    result = favorites.isEmpty
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+        
+        // Test edge case: Multiple users with separate favorites
+        property("Different users should have separate favorites lists") <- forAll(Gen.fromElements(in: 2...5)) { (userCount: Int) in
+            let expectation = XCTestExpectation(description: "Separate favorites per user")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Generate properties
+                    let properties = (0..<(userCount * 2)).map { index in
+                        let baseProperty = validPropertyGen().resize(index * 37).generate
+                        return RealDeal.Property(
+                            id: "property-\(index)-\(UUID().uuidString)",
+                            address: baseProperty.address,
+                            price: baseProperty.price,
+                            propertyType: baseProperty.propertyType,
+                            description: baseProperty.description,
+                            specifications: baseProperty.specifications,
+                            images: baseProperty.images,
+                            location: baseProperty.location,
+                            source: baseProperty.source,
+                            sellerId: baseProperty.sellerId,
+                            status: baseProperty.status,
+                            createdAt: baseProperty.createdAt,
+                            updatedAt: baseProperty.updatedAt
+                        )
+                    }
+                    
+                    mockRemote.seedData(properties: properties)
+                    
+                    // Create repository
+                    let repository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Create favorites for different users
+                    var userFavorites: [String: [String]] = [:] // userId -> [propertyIds]
+                    
+                    for userIndex in 0..<userCount {
+                        let userId = "user-\(userIndex)"
+                        let startIndex = userIndex * 2
+                        let userProperties = Array(properties[startIndex..<min(startIndex + 2, properties.count)])
+                        
+                        userFavorites[userId] = userProperties.map { $0.id }
+                        
+                        for property in userProperties {
+                            let favorite = Favorite(
+                                userId: userId,
+                                propertyId: property.id
+                            )
+                            try await repository.addFavorite(favorite)
+                        }
+                    }
+                    
+                    // Verify each user has only their own favorites
+                    for (userId, expectedPropertyIds) in userFavorites {
+                        let favorites = try await repository.fetchFavorites(userId: userId)
+                        let retrievedPropertyIds = Set(favorites.map { $0.propertyId })
+                        let expectedIds = Set(expectedPropertyIds)
+                        
+                        guard retrievedPropertyIds == expectedIds else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                        
+                        // Verify no favorites from other users are included
+                        let allBelongToUser = favorites.allSatisfy { $0.userId == userId }
+                        guard allBelongToUser else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Favorite Removal
+    
+    /// Feature: real-estate-listings, Property 36: Favorite removal
+    /// Validates: Requirements 11.3
+    func testFavoriteRemoval() {
+        // Test that removing a favorite results in it no longer appearing in the buyer's favorites list
+        property("Removing a favorite should remove it from the buyer's favorites list") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let testProperty = validPropertyGen().resize(seed).generate
+            let testUserId = "test-user-\(seed)"
+            let expectation = XCTestExpectation(description: "Favorite removal")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Seed the mock remote data source with the test property
+                    mockRemote.seedData(properties: [testProperty])
+                    
+                    // Create repository
+                    let repository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Step 1: Create and add a favorite
+                    let favorite = Favorite(
+                        userId: testUserId,
+                        propertyId: testProperty.id
+                    )
+                    try await repository.addFavorite(favorite)
+                    
+                    // Step 2: Verify the favorite was added successfully
+                    let favoritesBeforeRemoval = try await repository.fetchFavorites(userId: testUserId)
+                    guard favoritesBeforeRemoval.count == 1,
+                          favoritesBeforeRemoval.first?.propertyId == testProperty.id else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 3: Verify the property is favorited
+                    let isFavoritedBefore = try await repository.isFavorite(propertyId: testProperty.id, userId: testUserId)
+                    guard isFavoritedBefore else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 4: Remove the favorite using the favorite ID
+                    try await repository.removeFavorite(id: favorite.id)
+                    
+                    // Step 5: Verify the favorite no longer appears in the favorites list
+                    let favoritesAfterRemoval = try await repository.fetchFavorites(userId: testUserId)
+                    guard favoritesAfterRemoval.isEmpty else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 6: Verify the property is no longer favorited
+                    let isFavoritedAfter = try await repository.isFavorite(propertyId: testProperty.id, userId: testUserId)
+                    guard !isFavoritedAfter else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 7: Verify that attempting to fetch the removed favorite returns nothing
+                    let allFavorites = try await repository.fetchFavorites(userId: testUserId)
+                    let removedFavoriteStillExists = allFavorites.contains { $0.id == favorite.id }
+                    guard !removedFavoriteStillExists else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - favorite was successfully removed
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Favorite removal failed
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+        
+        // Test edge case: Removing a favorite that doesn't exist should not cause errors
+        property("Removing a non-existent favorite should handle gracefully") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let nonExistentFavoriteId = "non-existent-\(seed)"
+            let expectation = XCTestExpectation(description: "Remove non-existent favorite")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create repository
+                    let repository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Attempt to remove a favorite that doesn't exist
+                    // This should either succeed silently or throw a specific error
+                    try await repository.removeFavorite(id: nonExistentFavoriteId)
+                    
+                    // If we reach here, the operation completed without crashing
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Some implementations may throw an error for non-existent favorites
+                    // This is also acceptable behavior
+                    result = true
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+        
+        // Test edge case: Removing one favorite should not affect other favorites
+        property("Removing one favorite should not affect other favorites") <- forAll(Gen.fromElements(in: 2...5)) { (favoriteCount: Int) in
+            let testUserId = "test-user-\(UUID().uuidString)"
+            let expectation = XCTestExpectation(description: "Remove one favorite preserves others")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Generate multiple properties
+                    let testProperties = (0..<favoriteCount).map { index in
+                        let baseProperty = validPropertyGen().resize(index * 73).generate
+                        return RealDeal.Property(
+                            id: "property-\(index)-\(UUID().uuidString)",
+                            address: baseProperty.address,
+                            price: baseProperty.price,
+                            propertyType: baseProperty.propertyType,
+                            description: baseProperty.description,
+                            specifications: baseProperty.specifications,
+                            images: baseProperty.images,
+                            location: baseProperty.location,
+                            source: baseProperty.source,
+                            sellerId: baseProperty.sellerId,
+                            status: baseProperty.status,
+                            createdAt: baseProperty.createdAt,
+                            updatedAt: baseProperty.updatedAt
+                        )
+                    }
+                    
+                    // Seed the mock remote data source
+                    mockRemote.seedData(properties: testProperties)
+                    
+                    // Create repository
+                    let repository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Add all properties to favorites
+                    var addedFavorites: [Favorite] = []
+                    for property in testProperties {
+                        let favorite = Favorite(
+                            userId: testUserId,
+                            propertyId: property.id
+                        )
+                        try await repository.addFavorite(favorite)
+                        addedFavorites.append(favorite)
+                    }
+                    
+                    // Verify all favorites were added
+                    let allFavorites = try await repository.fetchFavorites(userId: testUserId)
+                    guard allFavorites.count == favoriteCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Remove the first favorite
+                    let favoriteToRemove = addedFavorites[0]
+                    try await repository.removeFavorite(id: favoriteToRemove.id)
+                    
+                    // Verify the removed favorite is gone
+                    let remainingFavorites = try await repository.fetchFavorites(userId: testUserId)
+                    guard remainingFavorites.count == favoriteCount - 1 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify the removed favorite is not in the list
+                    let removedStillExists = remainingFavorites.contains { $0.id == favoriteToRemove.id }
+                    guard !removedStillExists else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify all other favorites are still present
+                    let remainingPropertyIds = Set(remainingFavorites.map { $0.propertyId })
+                    let expectedPropertyIds = Set(testProperties.dropFirst().map { $0.id })
+                    guard remainingPropertyIds == expectedPropertyIds else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Cascading Favorite Deletion
+    
+    /// Feature: real-estate-listings, Property 37: Cascading favorite deletion
+    /// Validates: Requirements 11.4
+    func testCascadingFavoriteDeletion() {
+        // Test that when a property is deleted by the seller, it is automatically removed from all buyers' favorites lists
+        property("Deleting a property should remove it from all buyers' favorites") <- forAll(Gen.fromElements(in: 1...5)) { (buyerCount: Int) in
+            let expectation = XCTestExpectation(description: "Cascading favorite deletion")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create a test property
+                    let testProperty = validPropertyGen().generate
+                    
+                    // Seed the mock remote data source with the test property
+                    mockRemote.seedData(properties: [testProperty])
+                    
+                    // Create repositories
+                    let propertyRepository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let favoritesRepository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Step 1: Save the property to local storage
+                    try await localDataSource.saveProperty(testProperty)
+                    
+                    // Step 2: Create multiple buyers and have each favorite the property
+                    var buyerIds: [String] = []
+                    for i in 0..<buyerCount {
+                        let buyerId = "buyer-\(i)-\(UUID().uuidString)"
+                        buyerIds.append(buyerId)
+                        
+                        let favorite = Favorite(
+                            userId: buyerId,
+                            propertyId: testProperty.id
+                        )
+                        try await favoritesRepository.addFavorite(favorite)
+                    }
+                    
+                    // Step 3: Verify all buyers have favorited the property
+                    for buyerId in buyerIds {
+                        let isFavorited = try await favoritesRepository.isFavorite(
+                            propertyId: testProperty.id,
+                            userId: buyerId
+                        )
+                        guard isFavorited else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 4: Verify the total number of favorites for this property
+                    var totalFavoritesBeforeDeletion = 0
+                    for buyerId in buyerIds {
+                        let favorites = try await favoritesRepository.fetchFavorites(userId: buyerId)
+                        totalFavoritesBeforeDeletion += favorites.filter { $0.propertyId == testProperty.id }.count
+                    }
+                    guard totalFavoritesBeforeDeletion == buyerCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 5: Delete the property (this should cascade delete all favorites)
+                    try await propertyRepository.deleteProperty(id: testProperty.id)
+                    
+                    // Step 6: Verify the property no longer exists
+                    let deletedProperty = try await propertyRepository.getProperty(id: testProperty.id)
+                    guard deletedProperty == nil else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 7: Verify all buyers no longer have this property in their favorites
+                    for buyerId in buyerIds {
+                        let isFavorited = try await favoritesRepository.isFavorite(
+                            propertyId: testProperty.id,
+                            userId: buyerId
+                        )
+                        guard !isFavorited else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 8: Verify the favorites lists no longer contain the deleted property
+                    for buyerId in buyerIds {
+                        let favorites = try await favoritesRepository.fetchFavorites(userId: buyerId)
+                        let deletedPropertyStillInFavorites = favorites.contains { $0.propertyId == testProperty.id }
+                        guard !deletedPropertyStillInFavorites else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 9: Verify the total number of favorites for this property is now zero
+                    var totalFavoritesAfterDeletion = 0
+                    for buyerId in buyerIds {
+                        let favorites = try await favoritesRepository.fetchFavorites(userId: buyerId)
+                        totalFavoritesAfterDeletion += favorites.filter { $0.propertyId == testProperty.id }.count
+                    }
+                    guard totalFavoritesAfterDeletion == 0 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - cascading delete worked correctly
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Property deletion or favorite cascade failed
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+        
+        // Test edge case: Deleting a property with no favorites should not cause errors
+        property("Deleting a property with no favorites should handle gracefully") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let expectation = XCTestExpectation(description: "Delete property with no favorites")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create a test property
+                    let testProperty = validPropertyGen().resize(seed).generate
+                    
+                    // Seed the mock remote data source
+                    mockRemote.seedData(properties: [testProperty])
+                    
+                    // Create repository
+                    let propertyRepository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Save the property (but don't add any favorites)
+                    try await localDataSource.saveProperty(testProperty)
+                    
+                    // Delete the property (should succeed even with no favorites)
+                    try await propertyRepository.deleteProperty(id: testProperty.id)
+                    
+                    // Verify the property was deleted
+                    let deletedProperty = try await propertyRepository.getProperty(id: testProperty.id)
+                    guard deletedProperty == nil else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+        
+        // Test edge case: Deleting a property should only affect favorites for that property, not others
+        property("Deleting a property should not affect favorites for other properties") <- forAll(Gen.fromElements(in: 2...4)) { (propertyCount: Int) in
+            let expectation = XCTestExpectation(description: "Delete property preserves other favorites")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Generate multiple properties
+                    let testProperties = (0..<propertyCount).map { index in
+                        let baseProperty = validPropertyGen().resize(index * 73).generate
+                        return RealDeal.Property(
+                            id: "property-\(index)-\(UUID().uuidString)",
+                            address: baseProperty.address,
+                            price: baseProperty.price,
+                            propertyType: baseProperty.propertyType,
+                            description: baseProperty.description,
+                            specifications: baseProperty.specifications,
+                            images: baseProperty.images,
+                            location: baseProperty.location,
+                            source: baseProperty.source,
+                            sellerId: baseProperty.sellerId,
+                            status: baseProperty.status,
+                            createdAt: baseProperty.createdAt,
+                            updatedAt: baseProperty.updatedAt
+                        )
+                    }
+                    
+                    // Seed the mock remote data source
+                    mockRemote.seedData(properties: testProperties)
+                    
+                    // Create repositories
+                    let propertyRepository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let favoritesRepository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Save all properties
+                    for property in testProperties {
+                        try await localDataSource.saveProperty(property)
+                    }
+                    
+                    // Create a buyer who favorites all properties
+                    let buyerId = "buyer-\(UUID().uuidString)"
+                    for property in testProperties {
+                        let favorite = Favorite(
+                            userId: buyerId,
+                            propertyId: property.id
+                        )
+                        try await favoritesRepository.addFavorite(favorite)
+                    }
+                    
+                    // Verify all properties are favorited
+                    let allFavoritesBefore = try await favoritesRepository.fetchFavorites(userId: buyerId)
+                    guard allFavoritesBefore.count == propertyCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Delete the first property
+                    let propertyToDelete = testProperties[0]
+                    try await propertyRepository.deleteProperty(id: propertyToDelete.id)
+                    
+                    // Verify the deleted property is gone
+                    let deletedProperty = try await propertyRepository.getProperty(id: propertyToDelete.id)
+                    guard deletedProperty == nil else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify the deleted property is no longer in favorites
+                    let isFavorited = try await favoritesRepository.isFavorite(
+                        propertyId: propertyToDelete.id,
+                        userId: buyerId
+                    )
+                    guard !isFavorited else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify all other properties are still favorited
+                    let remainingFavorites = try await favoritesRepository.fetchFavorites(userId: buyerId)
+                    guard remainingFavorites.count == propertyCount - 1 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify the remaining favorites are for the correct properties
+                    let remainingPropertyIds = Set(remainingFavorites.map { $0.propertyId })
+                    let expectedPropertyIds = Set(testProperties.dropFirst().map { $0.id })
+                    guard remainingPropertyIds == expectedPropertyIds else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
     // MARK: - Property-Based Test for Marker Clustering
     
     /// Feature: real-estate-listings, Property 10: Marker clustering for nearby properties
@@ -4621,6 +5523,267 @@ extension PropertyBasedTests {
             }
             
             self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Favorite Status Indication
+    
+    /// Feature: real-estate-listings, Property 38: Favorite status indication
+    /// Validates: Requirements 11.5
+    func testFavoriteStatusIndication() {
+        // Test that the display correctly indicates whether a property is currently favorited by the viewing user
+        property("Favorite status should be correctly indicated for any property") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let expectation = XCTestExpectation(description: "Favorite status indication")
+            var result = false
+            
+            Task { @MainActor in
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create repositories
+                    let propertyRepository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let favoritesRepository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Generate test data
+                    let testProperty = validPropertyGen().resize(seed).generate
+                    let testUserId = "user-\(UUID().uuidString)"
+                    
+                    // Save the property
+                    try await localDataSource.saveProperty(testProperty)
+                    mockRemote.seedData(properties: [testProperty])
+                    
+                    // Create FavoritesViewModel
+                    let viewModel = FavoritesViewModel(
+                        favoritesRepository: favoritesRepository,
+                        propertyRepository: propertyRepository,
+                        currentUserId: testUserId
+                    )
+                    
+                    // Step 1: Initially, the property should NOT be favorited
+                    await viewModel.loadFavorites()
+                    let initiallyFavorited = viewModel.isFavorite(propertyId: testProperty.id)
+                    guard !initiallyFavorited else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 2: Verify the property is not in the favoritePropertyIds set
+                    guard !viewModel.favoritePropertyIds.contains(testProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 3: Add the property to favorites
+                    await viewModel.addFavorite(propertyId: testProperty.id)
+                    
+                    // Step 4: Now the property SHOULD be favorited
+                    let nowFavorited = viewModel.isFavorite(propertyId: testProperty.id)
+                    guard nowFavorited else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 5: Verify the property is in the favoritePropertyIds set
+                    guard viewModel.favoritePropertyIds.contains(testProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 6: Verify the property appears in the favorites list
+                    guard viewModel.favorites.contains(where: { $0.propertyId == testProperty.id }) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 7: Remove the property from favorites
+                    await viewModel.removeFavorite(propertyId: testProperty.id)
+                    
+                    // Step 8: Now the property should NOT be favorited again
+                    let afterRemovalFavorited = viewModel.isFavorite(propertyId: testProperty.id)
+                    guard !afterRemovalFavorited else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 9: Verify the property is no longer in the favoritePropertyIds set
+                    guard !viewModel.favoritePropertyIds.contains(testProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 10: Verify the property no longer appears in the favorites list
+                    guard !viewModel.favorites.contains(where: { $0.propertyId == testProperty.id }) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - favorite status indication is working correctly
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Test failed due to error
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+        
+        // Test edge case: Multiple properties with mixed favorite status
+        property("Favorite status should be correctly indicated for multiple properties") <- forAll(Gen.fromElements(in: 3...8)) { (propertyCount: Int) in
+            let expectation = XCTestExpectation(description: "Multiple properties favorite status")
+            var result = false
+            
+            Task { @MainActor in
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    
+                    // Create repositories
+                    let propertyRepository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let favoritesRepository = FavoritesRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    
+                    // Generate multiple properties
+                    let testProperties = (0..<propertyCount).map { index in
+                        let baseProperty = validPropertyGen().resize(index * 73).generate
+                        return RealDeal.Property(
+                            id: "property-\(index)-\(UUID().uuidString)",
+                            address: baseProperty.address,
+                            price: baseProperty.price,
+                            propertyType: baseProperty.propertyType,
+                            description: baseProperty.description,
+                            specifications: baseProperty.specifications,
+                            images: baseProperty.images,
+                            location: baseProperty.location,
+                            source: baseProperty.source,
+                            sellerId: baseProperty.sellerId,
+                            status: baseProperty.status,
+                            createdAt: baseProperty.createdAt,
+                            updatedAt: baseProperty.updatedAt
+                        )
+                    }
+                    
+                    let testUserId = "user-\(UUID().uuidString)"
+                    
+                    // Save all properties
+                    for property in testProperties {
+                        try await localDataSource.saveProperty(property)
+                    }
+                    mockRemote.seedData(properties: testProperties)
+                    
+                    // Create FavoritesViewModel
+                    let viewModel = FavoritesViewModel(
+                        favoritesRepository: favoritesRepository,
+                        propertyRepository: propertyRepository,
+                        currentUserId: testUserId
+                    )
+                    
+                    // Load initial state (no favorites)
+                    await viewModel.loadFavorites()
+                    
+                    // Step 1: Verify none are favorited initially
+                    for property in testProperties {
+                        guard !viewModel.isFavorite(propertyId: property.id) else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 2: Favorite every other property (0, 2, 4, ...)
+                    let favoritedIndices = stride(from: 0, to: propertyCount, by: 2)
+                    for index in favoritedIndices {
+                        await viewModel.addFavorite(propertyId: testProperties[index].id)
+                    }
+                    
+                    // Step 3: Verify favorited properties show correct status
+                    for index in favoritedIndices {
+                        let property = testProperties[index]
+                        guard viewModel.isFavorite(propertyId: property.id) else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                        guard viewModel.favoritePropertyIds.contains(property.id) else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 4: Verify non-favorited properties show correct status
+                    let nonFavoritedIndices = stride(from: 1, to: propertyCount, by: 2)
+                    for index in nonFavoritedIndices {
+                        let property = testProperties[index]
+                        guard !viewModel.isFavorite(propertyId: property.id) else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                        guard !viewModel.favoritePropertyIds.contains(property.id) else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 5: Toggle one favorited property (should become unfavorited)
+                    let toggleProperty = testProperties[0]
+                    await viewModel.toggleFavorite(propertyId: toggleProperty.id)
+                    guard !viewModel.isFavorite(propertyId: toggleProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 6: Toggle one non-favorited property (should become favorited)
+                    let toggleProperty2 = testProperties[1]
+                    await viewModel.toggleFavorite(propertyId: toggleProperty2.id)
+                    guard viewModel.isFavorite(propertyId: toggleProperty2.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - favorite status indication works correctly for multiple properties
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Test failed due to error
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 15.0)
             return result
         }
     }
