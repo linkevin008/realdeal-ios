@@ -11,6 +11,7 @@ class AuthViewModel: ObservableObject {
     @Published var currentUser: UserProfile?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var error: AppError?
     
     // Login form
     @Published var loginEmail: String = ""
@@ -122,9 +123,13 @@ class AuthViewModel: ObservableObject {
     func signIn() async {
         isLoading = true
         errorMessage = nil
+        error = nil
         
         do {
-            _ = try await authService.signIn(email: loginEmail, password: loginPassword)
+            // Use retry logic for authentication
+            _ = try await RetryExecutor.execute(policy: .conservative) {
+                try await self.authService.signIn(email: self.loginEmail, password: self.loginPassword)
+            }
             
             // Update state
             currentUser = authService.currentUser
@@ -133,19 +138,28 @@ class AuthViewModel: ObservableObject {
             // Clear form
             loginEmail = ""
             loginPassword = ""
-        } catch let error as AppError {
-            errorMessage = error.userMessage
+        } catch let appError as AppError {
+            error = appError
+            errorMessage = appError.userMessage
         } catch {
-            errorMessage = "An unexpected error occurred. Please try again."
+            let appError = AppError.unknown(error.localizedDescription)
+            self.error = appError
+            errorMessage = appError.userMessage
         }
         
         isLoading = false
+    }
+    
+    /// Retry last sign in attempt
+    func retrySignIn() async {
+        await signIn()
     }
     
     /// Register new user account
     func signUp() async {
         isLoading = true
         errorMessage = nil
+        error = nil
         
         // Validate all fields
         guard validateRegistrationForm() else {
@@ -162,11 +176,14 @@ class AuthViewModel: ObservableObject {
                 visibilitySettings: ProfileVisibility()
             )
             
-            _ = try await authService.signUp(
-                email: registerEmail,
-                password: registerPassword,
-                profile: profile
-            )
+            // Use retry logic for registration
+            _ = try await RetryExecutor.execute(policy: .conservative) {
+                try await self.authService.signUp(
+                    email: self.registerEmail,
+                    password: self.registerPassword,
+                    profile: profile
+                )
+            }
             
             // Update state
             currentUser = authService.currentUser
@@ -174,13 +191,21 @@ class AuthViewModel: ObservableObject {
             
             // Clear form
             clearRegistrationForm()
-        } catch let error as AppError {
-            errorMessage = error.userMessage
+        } catch let appError as AppError {
+            error = appError
+            errorMessage = appError.userMessage
         } catch {
-            errorMessage = "An unexpected error occurred. Please try again."
+            let appError = AppError.unknown(error.localizedDescription)
+            self.error = appError
+            errorMessage = appError.userMessage
         }
         
         isLoading = false
+    }
+    
+    /// Retry last sign up attempt
+    func retrySignUp() async {
+        await signUp()
     }
     
     /// Sign out current user

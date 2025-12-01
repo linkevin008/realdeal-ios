@@ -249,7 +249,7 @@
   - **Property 38: Favorite status indication**
   - **Validates: Requirements 11.5**
 
-- [ ] 16. Implement external listing API integration
+- [x] 16. Implement external listing API integration
   - Create ExternalListingAPIProtocol for third-party integrations
   - Implement data normalization from external formats to Property model
   - Create MLSAPIClient for MLS integration (with mock for testing)
@@ -257,19 +257,19 @@
   - Implement data validation and sanitization for external data
   - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ]* 16.1 Write property test for external listing normalization
+- [x] 16.1 Write property test for external listing normalization
   - **Property 27: External listing normalization**
   - **Validates: Requirements 8.1**
 
-- [ ]* 16.2 Write property test for listing source attribution
+- [x] 16.2 Write property test for listing source attribution
   - **Property 28: Listing source attribution**
   - **Validates: Requirements 8.2**
 
-- [ ]* 16.3 Write property test for external data validation
+- [x] 16.3 Write property test for external data validation
   - **Property 29: External data validation**
   - **Validates: Requirements 8.3**
 
-- [ ] 17. Build multi-source listing aggregation
+- [x] 17. Build multi-source listing aggregation
   - Create AggregationService coordinating multiple data sources
   - Implement duplicate detection and removal logic
   - Add conflict resolution with configurable prioritization rules
@@ -277,19 +277,19 @@
   - Add source-specific error handling
   - _Requirements: 9.1, 9.2, 9.5_
 
-- [ ]* 17.1 Write property test for multi-source aggregation
+- [x] 17.1 Write property test for multi-source aggregation
   - **Property 30: Multi-source listing aggregation**
   - **Validates: Requirements 9.1**
 
-- [ ]* 17.2 Write property test for duplicate elimination
+- [x] 17.2 Write property test for duplicate elimination
   - **Property 31: Duplicate listing elimination**
   - **Validates: Requirements 9.2**
 
-- [ ]* 17.3 Write property test for conflict resolution
+- [x] 17.3 Write property test for conflict resolution
   - **Property 32: Conflict resolution prioritization**
   - **Validates: Requirements 9.5**
 
-- [ ] 18. Implement error handling and network resilience
+- [x] 18. Implement error handling and network resilience
   - Create AppError enum with all error categories
   - Implement retry logic with exponential backoff
   - Add user-facing error messages for all error types

@@ -129,11 +129,7 @@ class PropertyListingService {
     /// Upload property images to storage
     private func uploadPropertyImages(_ imageDataArray: [Data], propertyId: String) async throws -> [URL] {
         guard let imageStorage = imageStorage else {
-            throw AppError.unknown(NSError(
-                domain: "PropertyListingService",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Image storage not configured"]
-            ))
+            throw AppError.unknown("Image storage not configured")
         }
         
         // Validate all images first

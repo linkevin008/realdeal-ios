@@ -5,27 +5,42 @@ class PropertyRepository: PropertyRepositoryProtocol {
     private let localDataSource: LocalDataSourceProtocol
     private let remoteDataSource: RemoteDataSourceProtocol
     private let networkMonitor: NetworkMonitor
+    private let retryPolicy: RetryPolicy
     
     init(
         localDataSource: LocalDataSourceProtocol,
         remoteDataSource: RemoteDataSourceProtocol,
-        networkMonitor: NetworkMonitor = .shared
+        networkMonitor: NetworkMonitor = .shared,
+        retryPolicy: RetryPolicy = .default
     ) {
         self.localDataSource = localDataSource
         self.remoteDataSource = remoteDataSource
         self.networkMonitor = networkMonitor
+        self.retryPolicy = retryPolicy
     }
     
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property] {
         // Offline-first: Try remote first if connected, fall back to cache
         if networkMonitor.isConnected {
             do {
-                let properties = try await remoteDataSource.fetchProperties(filters: filters)
+                // Use retry logic for network requests
+                let properties = try await RetryExecutor.execute(policy: retryPolicy) {
+                    try await self.remoteDataSource.fetchProperties(filters: filters)
+                }
+                
                 // Cache the results locally
                 try await localDataSource.saveProperties(properties)
                 return properties
-            } catch {
+            } catch let error as AppError {
                 // If remote fails, fall back to cache
+                do {
+                    return try await localDataSource.fetchProperties(filters: filters)
+                } catch {
+                    // If cache also fails, throw the original network error
+                    throw error
+                }
+            } catch {
+                // For unknown errors, try cache
                 return try await localDataSource.fetchProperties(filters: filters)
             }
         } else {
@@ -41,7 +56,14 @@ class PropertyRepository: PropertyRepositoryProtocol {
         // Try to sync with remote if connected
         if networkMonitor.isConnected {
             do {
-                let remoteProperty = try await remoteDataSource.createProperty(property)
+                // Use retry logic with timeout for create operations
+                let remoteProperty = try await RetryExecutor.executeWithTimeout(
+                    policy: retryPolicy,
+                    timeout: 30.0
+                ) {
+                    try await self.remoteDataSource.createProperty(property)
+                }
+                
                 // Update local cache with remote version
                 try await localDataSource.saveProperty(remoteProperty)
                 return remoteProperty
@@ -62,10 +84,17 @@ class PropertyRepository: PropertyRepositoryProtocol {
         // Try to sync with remote if connected
         if networkMonitor.isConnected {
             do {
-                try await remoteDataSource.updateProperty(property)
+                // Use retry logic for update operations
+                try await RetryExecutor.executeWithTimeout(
+                    policy: retryPolicy,
+                    timeout: 30.0
+                ) {
+                    try await self.remoteDataSource.updateProperty(property)
+                }
             } catch {
                 // If remote fails, local update is still saved
                 // In a production app, you'd queue this for later sync
+                throw error
             }
         }
     }
@@ -80,10 +109,14 @@ class PropertyRepository: PropertyRepositoryProtocol {
         // Try to sync with remote if connected
         if networkMonitor.isConnected {
             do {
-                try await remoteDataSource.deleteProperty(id: id)
+                // Use retry logic for delete operations
+                try await RetryExecutor.execute(policy: retryPolicy) {
+                    try await self.remoteDataSource.deleteProperty(id: id)
+                }
             } catch {
                 // If remote fails, local deletion is still done
                 // In a production app, you'd queue this for later sync
+                throw error
             }
         }
     }

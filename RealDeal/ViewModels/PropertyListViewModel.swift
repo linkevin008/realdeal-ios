@@ -11,6 +11,7 @@ class PropertyListViewModel: ObservableObject {
     @Published var properties: [Property] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var error: AppError?
     @Published var filters: PropertyFilters = PropertyFilters()
     @Published var favoritePropertyIds: Set<String> = []
     
@@ -44,6 +45,7 @@ class PropertyListViewModel: ObservableObject {
     func loadProperties() async {
         isLoading = true
         errorMessage = nil
+        error = nil
         currentPage = 0
         hasMorePages = true
         
@@ -64,15 +66,23 @@ class PropertyListViewModel: ObservableObject {
             // Load favorite status
             await loadFavoriteStatus()
             
-        } catch let error as AppError {
-            errorMessage = error.userMessage
+        } catch let appError as AppError {
+            error = appError
+            errorMessage = appError.userMessage
             properties = []
         } catch {
-            errorMessage = "Failed to load properties. Please try again."
+            let appError = AppError.unknown(error.localizedDescription)
+            error = appError
+            errorMessage = appError.userMessage
             properties = []
         }
         
         isLoading = false
+    }
+    
+    /// Retry loading properties
+    func retryLoadProperties() async {
+        await loadProperties()
     }
     
     /// Load favorite status for current user
