@@ -19,7 +19,16 @@ let package = Package(
             name: "RealDeal",
             dependencies: [],
             path: "RealDeal",
-            exclude: ["Info.plist", "RealDealApp.swift"],
+            exclude: [
+                "Info.plist",
+                "RealDealApp.swift",
+                "RealDealApp.entitlements",
+                "README.md",
+                "Services/FilterService_README.md",
+                "Services/ExternalListingAPI_README.md",
+                "Utilities/CoreData/README.md",
+                "Utilities/CoreData/MIGRATION_STRATEGY.md"
+            ],
             resources: [
                 .process("RealDeal.xcdatamodeld"),
                 .process("Assets.xcassets")

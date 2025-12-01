@@ -14,7 +14,7 @@ final class PropertyBasedTests: XCTestCase {
     /// Validates: Requirements 1.3, 1.5
     func testInvalidPropertyDataIsRejected() {
         // Test that properties with invalid data are rejected during validation
-        property("Invalid property data should be rejected") <- forAll { [self] (seed: Int) in
+        property("Invalid property data should be rejected") <- forAll { (seed: Int) in
             let invalidProperty = invalidPropertyGen().resize(seed).generate
             do {
                 try invalidProperty.validate()
@@ -2225,13 +2225,6 @@ final class PropertyBasedTests: XCTestCase {
                             expectation.fulfill()
                             return
                         }
-                        
-                        // Verify annotation is a PropertyAnnotation (which supports clustering)
-                        guard annotation is PropertyAnnotation else {
-                            result = false
-                            expectation.fulfill()
-                            return
-                        }
                     }
                     
                     // Step 3: Verify that nearby properties can be identified
@@ -2304,6 +2297,210 @@ final class PropertyBasedTests: XCTestCase {
         let location1 = CLLocation(latitude: coord1.latitude, longitude: coord1.longitude)
         let location2 = CLLocation(latitude: coord2.latitude, longitude: coord2.longitude)
         return location1.distance(from: location2)
+    }
+}
+
+// MARK: - Mock External API for Testing
+
+/// Mock external API client for testing multi-source aggregation
+@available(iOS 15.0, macOS 12.0, *)
+class MockExternalAPI: ExternalListingAPIProtocol {
+    private let source: ListingSource
+    private let propertyCount: Int
+    private var mockListings: [ExternalListing] = []
+    
+    init(source: ListingSource, propertyCount: Int) {
+        self.source = source
+        self.propertyCount = propertyCount
+        self.mockListings = createMockListings()
+    }
+    
+    func fetchListings(parameters: SearchParameters) async throws -> [ExternalListing] {
+        // Return all mock listings (filtering can be added if needed)
+        return mockListings
+    }
+    
+    func normalizeToProperty(_ listing: ExternalListing) -> RealDeal.Property {
+        let rawData = listing.rawData
+        
+        let address = Address(
+            street: rawData["street"] as? String ?? "Unknown Street",
+            city: rawData["city"] as? String ?? "Unknown City",
+            state: rawData["state"] as? String ?? "CA",
+            zipCode: rawData["zip_code"] as? String ?? "00000",
+            country: rawData["country"] as? String ?? "USA"
+        )
+        
+        let price = Decimal(rawData["price"] as? Double ?? 100000)
+        
+        let propertyTypeString = rawData["property_type"] as? String ?? "house"
+        let propertyType = PropertyType(rawValue: propertyTypeString.lowercased()) ?? .house
+        
+        let description = rawData["description"] as? String ?? "Property from \(source.rawValue)"
+        
+        let specifications = PropertySpecifications(
+            bedrooms: rawData["bedrooms"] as? Int,
+            bathrooms: rawData["bathrooms"] as? Double,
+            squareFeet: rawData["square_feet"] as? Int,
+            lotSize: rawData["lot_size"] as? Double,
+            yearBuilt: rawData["year_built"] as? Int
+        )
+        
+        let imageUrls = (rawData["images"] as? [String] ?? []).compactMap { URL(string: $0) }
+        let images = imageUrls.enumerated().map { index, url in
+            PropertyImage(url: url, order: index)
+        }
+        
+        let location = Coordinate(
+            latitude: rawData["latitude"] as? Double ?? 37.7749,
+            longitude: rawData["longitude"] as? Double ?? -122.4194
+        )
+        
+        return RealDeal.Property(
+            id: listing.id,
+            address: address,
+            price: price,
+            propertyType: propertyType,
+            description: description,
+            specifications: specifications,
+            images: images,
+            location: location,
+            source: source,
+            sellerId: nil,
+            status: .active,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+    }
+    
+    private func createMockListings() -> [ExternalListing] {
+        var listings: [ExternalListing] = []
+        
+        for i in 0..<propertyCount {
+            let id = "\(source.rawValue)-\(i)-\(UUID().uuidString)"
+            
+            let rawData: [String: Any] = [
+                "street": "\(100 + i * 100) \(source.rawValue.capitalized) Street",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "94\(100 + i)",
+                "country": "USA",
+                "price": Double(200000 + i * 50000),
+                "property_type": "house",
+                "description": "Test property from \(source.rawValue) source",
+                "bedrooms": 3 + i,
+                "bathrooms": 2.0 + Double(i) * 0.5,
+                "square_feet": 1500 + i * 200,
+                "latitude": 37.7749 + Double(i) * 0.01,
+                "longitude": -122.4194 + Double(i) * 0.01,
+                "images": [
+                    "https://example.com/\(source.rawValue)/\(id)-1.jpg",
+                    "https://example.com/\(source.rawValue)/\(id)-2.jpg"
+                ]
+            ]
+            
+            listings.append(ExternalListing(id: id, rawData: rawData))
+        }
+        
+        return listings
+    }
+}
+
+/// Mock external API client that returns duplicate properties for testing deduplication
+@available(iOS 15.0, macOS 12.0, *)
+class MockExternalAPIWithDuplicates: ExternalListingAPIProtocol {
+    private let source: ListingSource
+    private let baseProperty: RealDeal.Property
+    
+    init(source: ListingSource, baseProperty: RealDeal.Property) {
+        self.source = source
+        self.baseProperty = baseProperty
+    }
+    
+    func fetchListings(parameters: SearchParameters) async throws -> [ExternalListing] {
+        // Create an external listing that represents the same property
+        let id = "\(source.rawValue)-\(UUID().uuidString)"
+        
+        var rawData: [String: Any] = [
+            "street": baseProperty.address.street,
+            "city": baseProperty.address.city,
+            "state": baseProperty.address.state,
+            "zip_code": baseProperty.address.zipCode,
+            "country": baseProperty.address.country,
+            "price": NSDecimalNumber(decimal: baseProperty.price).doubleValue,
+            "property_type": baseProperty.propertyType.rawValue,
+            "description": baseProperty.description,
+            "bedrooms": baseProperty.specifications.bedrooms as Any,
+            "bathrooms": baseProperty.specifications.bathrooms as Any,
+            "square_feet": baseProperty.specifications.squareFeet as Any,
+            "lot_size": baseProperty.specifications.lotSize as Any,
+            "year_built": baseProperty.specifications.yearBuilt as Any,
+            "latitude": baseProperty.location.latitude,
+            "longitude": baseProperty.location.longitude,
+            "images": baseProperty.images.map { $0.url.absoluteString }
+        ]
+        
+        // Include sellerId if present
+        if let sellerId = baseProperty.sellerId {
+            rawData["seller_id"] = sellerId
+        }
+        
+        return [ExternalListing(id: id, rawData: rawData)]
+    }
+    
+    func normalizeToProperty(_ listing: ExternalListing) -> RealDeal.Property {
+        let rawData = listing.rawData
+        
+        let address = Address(
+            street: rawData["street"] as? String ?? "Unknown Street",
+            city: rawData["city"] as? String ?? "Unknown City",
+            state: rawData["state"] as? String ?? "CA",
+            zipCode: rawData["zip_code"] as? String ?? "00000",
+            country: rawData["country"] as? String ?? "USA"
+        )
+        
+        let price = Decimal(rawData["price"] as? Double ?? 100000)
+        
+        let propertyTypeString = rawData["property_type"] as? String ?? "house"
+        let propertyType = PropertyType(rawValue: propertyTypeString.lowercased()) ?? .house
+        
+        let description = rawData["description"] as? String ?? "Property from \(source.rawValue)"
+        
+        let specifications = PropertySpecifications(
+            bedrooms: rawData["bedrooms"] as? Int,
+            bathrooms: rawData["bathrooms"] as? Double,
+            squareFeet: rawData["square_feet"] as? Int,
+            lotSize: rawData["lot_size"] as? Double,
+            yearBuilt: rawData["year_built"] as? Int
+        )
+        
+        let imageUrls = (rawData["images"] as? [String] ?? []).compactMap { URL(string: $0) }
+        let images = imageUrls.enumerated().map { index, url in
+            PropertyImage(url: url, order: index)
+        }
+        
+        let location = Coordinate(
+            latitude: rawData["latitude"] as? Double ?? 37.7749,
+            longitude: rawData["longitude"] as? Double ?? -122.4194
+        )
+        
+        let sellerId = rawData["seller_id"] as? String
+        
+        return RealDeal.Property(
+            id: listing.id,
+            address: address,
+            price: price,
+            propertyType: propertyType,
+            description: description,
+            specifications: specifications,
+            images: images,
+            location: location,
+            source: source,
+            sellerId: sellerId,
+            status: .active,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
     }
 }
 
@@ -3077,6 +3274,530 @@ func emptyEmailGen() -> Gen<InvalidCredentials> {
             registeredUser: nil
         )
     }
+}
+
+// MARK: - Generators for External Listing Data
+
+/// Generator for valid external listings (from MLS or other external APIs)
+func validExternalListingGen() -> Gen<ExternalListing> {
+    Gen.compose { c in
+        let id = "MLS-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+        
+        // Generate address components
+        let streets = ["123 Oak Street", "456 Pine Avenue", "789 Maple Drive", "321 Elm Street", "555 Cedar Lane"]
+        let cities = ["San Francisco", "Los Angeles", "Austin", "Seattle", "Denver", "Portland", "Boston"]
+        let states = ["CA", "TX", "WA", "CO", "OR", "MA", "NY"]
+        let zipCodes = ["94102", "90001", "78701", "98101", "80202", "97201", "02101"]
+        
+        let street = c.generate(using: Gen.fromElements(of: streets))
+        let city = c.generate(using: Gen.fromElements(of: cities))
+        let state = c.generate(using: Gen.fromElements(of: states))
+        let zipCode = c.generate(using: Gen.fromElements(of: zipCodes))
+        
+        // Generate price
+        let price = Double(c.generate(using: Gen.fromElements(in: 100000...5000000)))
+        
+        // Generate property type
+        let propertyTypes = ["house", "apartment", "condo", "land", "commercial"]
+        let propertyType = c.generate(using: Gen.fromElements(of: propertyTypes))
+        
+        // Generate description
+        let descriptions = [
+            "Beautiful family home with spacious backyard",
+            "Modern apartment in downtown area",
+            "Charming condo with stunning views",
+            "Prime commercial property",
+            "Vacant land ready for development"
+        ]
+        let description = c.generate(using: Gen.fromElements(of: descriptions))
+        
+        // Generate specifications (optional)
+        let bedrooms = c.generate(using: Gen.fromElements(of: [nil, 1, 2, 3, 4, 5]))
+        let bathrooms = c.generate(using: Gen.fromElements(of: [nil, 1.0, 1.5, 2.0, 2.5, 3.0]))
+        let squareFeet = c.generate(using: Gen.fromElements(of: [nil, 1000, 1500, 2000, 2500, 3000]))
+        let lotSize = c.generate(using: Gen.fromElements(of: [nil, 2000.0, 5000.0, 7500.0, 10000.0]))
+        let yearBuilt = c.generate(using: Gen.fromElements(of: [nil, 1980, 1990, 2000, 2010, 2020]))
+        
+        // Generate location coordinates
+        let latitude = Double(c.generate(using: Gen.fromElements(in: 25...48)))
+        let longitude = Double(c.generate(using: Gen.fromElements(in: -125...(-70))))
+        
+        // Generate image URLs
+        let imageCount = c.generate(using: Gen.fromElements(in: 0...5))
+        let images = (0..<imageCount).map { "https://example.com/images/\(id)-\($0).jpg" }
+        
+        // Build raw data dictionary
+        var rawData: [String: Any] = [
+            "street": street,
+            "city": city,
+            "state": state,
+            "zip_code": zipCode,
+            "country": "USA",
+            "price": price,
+            "property_type": propertyType,
+            "description": description,
+            "latitude": latitude,
+            "longitude": longitude
+        ]
+        
+        if let bedrooms = bedrooms {
+            rawData["bedrooms"] = bedrooms
+        }
+        if let bathrooms = bathrooms {
+            rawData["bathrooms"] = bathrooms
+        }
+        if let squareFeet = squareFeet {
+            rawData["square_feet"] = squareFeet
+        }
+        if let lotSize = lotSize {
+            rawData["lot_size"] = lotSize
+        }
+        if let yearBuilt = yearBuilt {
+            rawData["year_built"] = yearBuilt
+        }
+        if !images.isEmpty {
+            rawData["images"] = images
+        }
+        
+        return ExternalListing(id: id, rawData: rawData)
+    }
+}
+
+/// Generator for external listings with alternative field names (testing normalization flexibility)
+func externalListingWithAlternativeFieldsGen() -> Gen<ExternalListing> {
+    Gen.compose { c in
+        let id = "EXT-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+        
+        // Use alternative field names that should still be normalized correctly
+        let rawData: [String: Any] = [
+            "street": "123 Test St",
+            "city": "Test City",
+            "state": "CA",
+            "zipCode": "12345", // Alternative: zipCode instead of zip_code
+            "price": 500000.0,
+            "propertyType": "house", // Alternative: propertyType instead of property_type
+            "remarks": "Test description", // Alternative: remarks instead of description
+            "lat": 37.7749, // Alternative: lat instead of latitude
+            "lng": -122.4194, // Alternative: lng instead of longitude
+            "beds": 3, // Alternative: beds instead of bedrooms
+            "baths": 2, // Alternative: baths instead of bathrooms
+            "sqft": 2000 // Alternative: sqft instead of square_feet
+        ]
+        
+        return ExternalListing(id: id, rawData: rawData)
+    }
+}
+
+/// Generator for external listings with missing optional fields
+func minimalExternalListingGen() -> Gen<ExternalListing> {
+    Gen.compose { c in
+        let id = "MIN-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+        
+        // Only required fields
+        let rawData: [String: Any] = [
+            "street": "123 Main St",
+            "city": "Test City",
+            "state": "CA",
+            "zip_code": "12345",
+            "price": 300000.0,
+            "property_type": "house",
+            "latitude": 37.0,
+            "longitude": -122.0
+        ]
+        
+        return ExternalListing(id: id, rawData: rawData)
+    }
+}
+
+/// Generator for invalid external listings (should fail validation)
+func invalidExternalListingGen() -> Gen<ExternalListing> {
+    Gen.one(of: [
+        // Scenario 1: Missing required address field (street)
+        missingStreetExternalListingGen(),
+        // Scenario 2: Missing required address field (city)
+        missingCityExternalListingGen(),
+        // Scenario 3: Missing required address field (state)
+        missingStateExternalListingGen(),
+        // Scenario 4: Missing or invalid price
+        invalidPriceExternalListingGen(),
+        // Scenario 5: Invalid location coordinates
+        invalidCoordinatesExternalListingGen(),
+        // Scenario 6: Missing property type
+        missingPropertyTypeExternalListingGen(),
+        // Scenario 7: Empty/whitespace required fields
+        emptyFieldsExternalListingGen()
+    ])
+}
+
+/// Generator for external listing missing street
+func missingStreetExternalListingGen() -> Gen<ExternalListing> {
+    Gen.compose { c in
+        let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+        let rawData: [String: Any] = [
+            // "street" is missing
+            "city": "Test City",
+            "state": "CA",
+            "zip_code": "12345",
+            "price": 300000.0,
+            "property_type": "house",
+            "latitude": 37.0,
+            "longitude": -122.0
+        ]
+        return ExternalListing(id: id, rawData: rawData)
+    }
+}
+
+/// Generator for external listing missing city
+func missingCityExternalListingGen() -> Gen<ExternalListing> {
+    Gen.compose { c in
+        let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+        let rawData: [String: Any] = [
+            "street": "123 Main St",
+            // "city" is missing
+            "state": "CA",
+            "zip_code": "12345",
+            "price": 300000.0,
+            "property_type": "house",
+            "latitude": 37.0,
+            "longitude": -122.0
+        ]
+        return ExternalListing(id: id, rawData: rawData)
+    }
+}
+
+/// Generator for external listing missing state
+func missingStateExternalListingGen() -> Gen<ExternalListing> {
+    Gen.compose { c in
+        let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+        let rawData: [String: Any] = [
+            "street": "123 Main St",
+            "city": "Test City",
+            // "state" is missing
+            "zip_code": "12345",
+            "price": 300000.0,
+            "property_type": "house",
+            "latitude": 37.0,
+            "longitude": -122.0
+        ]
+        return ExternalListing(id: id, rawData: rawData)
+    }
+}
+
+/// Generator for external listing with invalid price
+func invalidPriceExternalListingGen() -> Gen<ExternalListing> {
+    Gen.one(of: [
+        // Missing price
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                // "price" is missing
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Negative price
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": -100000.0, // Invalid: negative price
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Zero price
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 0.0, // Invalid: zero price
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        }
+    ])
+}
+
+/// Generator for external listing with invalid coordinates
+func invalidCoordinatesExternalListingGen() -> Gen<ExternalListing> {
+    Gen.one(of: [
+        // Missing coordinates
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house"
+                // latitude and longitude are missing
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Invalid latitude (> 90)
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 95.0, // Invalid: > 90
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Invalid latitude (< -90)
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": -95.0, // Invalid: < -90
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Invalid longitude (> 180)
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": 185.0 // Invalid: > 180
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Invalid longitude (< -180)
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -185.0 // Invalid: < -180
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        }
+    ])
+}
+
+/// Generator for external listing missing property type
+func missingPropertyTypeExternalListingGen() -> Gen<ExternalListing> {
+    Gen.compose { c in
+        let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+        let rawData: [String: Any] = [
+            "street": "123 Main St",
+            "city": "Test City",
+            "state": "CA",
+            "zip_code": "12345",
+            "price": 300000.0,
+            // "property_type" is missing
+            "latitude": 37.0,
+            "longitude": -122.0
+        ]
+        return ExternalListing(id: id, rawData: rawData)
+    }
+}
+
+/// Generator for external listing with invalid specifications
+func invalidSpecificationsExternalListingGen() -> Gen<ExternalListing> {
+    Gen.one(of: [
+        // Negative bedrooms
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0,
+                "bedrooms": -1 // Invalid: negative
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Excessive bedrooms
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0,
+                "bedrooms": 100 // Invalid: > 50
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Negative bathrooms
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0,
+                "bathrooms": -2.0 // Invalid: negative
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Invalid year built (too old)
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0,
+                "year_built": 1500 // Invalid: < 1800
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Invalid year built (future)
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let currentYear = Calendar.current.component(.year, from: Date())
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0,
+                "year_built": currentYear + 10 // Invalid: too far in future
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        }
+    ])
+}
+
+/// Generator for external listing with empty/whitespace required fields
+func emptyFieldsExternalListingGen() -> Gen<ExternalListing> {
+    Gen.one(of: [
+        // Empty street
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "", // Invalid: empty
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Whitespace-only street
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "   ", // Invalid: whitespace only
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Empty city
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "", // Invalid: empty
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Empty state
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "", // Invalid: empty
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "house",
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        },
+        // Empty property type
+        Gen.compose { c in
+            let id = "INV-\(c.generate(using: Gen.fromElements(in: 1000...9999)))"
+            let rawData: [String: Any] = [
+                "street": "123 Main St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 300000.0,
+                "property_type": "", // Invalid: empty
+                "latitude": 37.0,
+                "longitude": -122.0
+            ]
+            return ExternalListing(id: id, rawData: rawData)
+        }
+    ])
 }
 
 // MARK: - Generators for Registration Data
@@ -4522,7 +5243,7 @@ extension PropertyBasedTests {
                     // Generate properties within a reasonable area (most should be within 100 miles)
                     var properties: [RealDeal.Property] = []
                     
-                    for i in 0..<propertyCount {
+                    for _ in 0..<propertyCount {
                         var property = validPropertyGen().generate
                         property.status = .active
                         
@@ -5785,6 +6506,1271 @@ extension PropertyBasedTests {
             
             self.wait(for: [expectation], timeout: 15.0)
             return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for External Listing Normalization
+    
+    /// Feature: real-estate-listings, Property 27: External listing normalization
+    /// Validates: Requirements 8.1
+    func testExternalListingNormalization() {
+        // Test that external API data is correctly normalized to the internal Property format with all required fields mapped
+        property("External listing data should be correctly normalized to Property format") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let externalListing = validExternalListingGen().resize(seed).generate
+            
+            // Create MLSAPIClient for normalization
+            let mlsClient = MLSAPIClient(
+                baseURL: URL(string: "https://api.example.com")!,
+                apiKey: "test-key"
+            )
+            
+            // Normalize the external listing to Property
+            let normalizedProperty = mlsClient.normalizeToProperty(externalListing)
+            
+            // Step 1: Verify the ID is preserved
+            guard normalizedProperty.id == externalListing.id else {
+                return false
+            }
+            
+            // Step 2: Verify address fields are correctly mapped
+            let rawData = externalListing.rawData
+            if let street = rawData["street"] as? String {
+                guard normalizedProperty.address.street == street else {
+                    return false
+                }
+            }
+            if let city = rawData["city"] as? String {
+                guard normalizedProperty.address.city == city else {
+                    return false
+                }
+            }
+            if let state = rawData["state"] as? String {
+                guard normalizedProperty.address.state == state else {
+                    return false
+                }
+            }
+            if let zipCode = rawData["zip_code"] as? String {
+                guard normalizedProperty.address.zipCode == zipCode else {
+                    return false
+                }
+            }
+            
+            // Step 3: Verify price is correctly mapped
+            if let priceDouble = rawData["price"] as? Double {
+                guard normalizedProperty.price == Decimal(priceDouble) else {
+                    return false
+                }
+            } else if let priceInt = rawData["price"] as? Int {
+                guard normalizedProperty.price == Decimal(priceInt) else {
+                    return false
+                }
+            }
+            
+            // Step 4: Verify property type is correctly mapped
+            if let typeString = rawData["property_type"] as? String {
+                let expectedType: PropertyType
+                switch typeString.lowercased() {
+                case "house", "single family", "single-family", "sfh":
+                    expectedType = .house
+                case "apartment", "apt":
+                    expectedType = .apartment
+                case "condo", "condominium":
+                    expectedType = .condo
+                case "land", "lot":
+                    expectedType = .land
+                case "commercial":
+                    expectedType = .commercial
+                default:
+                    expectedType = .house
+                }
+                guard normalizedProperty.propertyType == expectedType else {
+                    return false
+                }
+            }
+            
+            // Step 5: Verify description is mapped (or has default)
+            if let description = rawData["description"] as? String {
+                guard normalizedProperty.description == description else {
+                    return false
+                }
+            } else {
+                // Should have default description if none provided
+                guard !normalizedProperty.description.isEmpty else {
+                    return false
+                }
+            }
+            
+            // Step 6: Verify specifications are correctly mapped
+            if let bedrooms = rawData["bedrooms"] as? Int {
+                guard normalizedProperty.specifications.bedrooms == bedrooms else {
+                    return false
+                }
+            }
+            if let bathrooms = rawData["bathrooms"] as? Double {
+                guard normalizedProperty.specifications.bathrooms == bathrooms else {
+                    return false
+                }
+            }
+            if let squareFeet = rawData["square_feet"] as? Int {
+                guard normalizedProperty.specifications.squareFeet == squareFeet else {
+                    return false
+                }
+            }
+            if let lotSize = rawData["lot_size"] as? Double {
+                guard normalizedProperty.specifications.lotSize == lotSize else {
+                    return false
+                }
+            }
+            if let yearBuilt = rawData["year_built"] as? Int {
+                guard normalizedProperty.specifications.yearBuilt == yearBuilt else {
+                    return false
+                }
+            }
+            
+            // Step 7: Verify location coordinates are correctly mapped
+            if let latitude = rawData["latitude"] as? Double,
+               let longitude = rawData["longitude"] as? Double {
+                guard normalizedProperty.location.latitude == latitude,
+                      normalizedProperty.location.longitude == longitude else {
+                    return false
+                }
+            }
+            
+            // Step 8: Verify images are correctly mapped
+            if let imageUrls = rawData["images"] as? [String] {
+                let validUrls = imageUrls.compactMap { URL(string: $0) }
+                    .filter { $0.scheme == "http" || $0.scheme == "https" }
+                guard normalizedProperty.images.count == validUrls.count else {
+                    return false
+                }
+                for (index, image) in normalizedProperty.images.enumerated() {
+                    guard image.url == validUrls[index],
+                          image.order == index else {
+                        return false
+                    }
+                }
+            }
+            
+            // Step 9: Verify source is set to MLS
+            guard normalizedProperty.source == .mls else {
+                return false
+            }
+            
+            // Step 10: Verify status is set to active
+            guard normalizedProperty.status == .active else {
+                return false
+            }
+            
+            // Step 11: Verify sellerId is nil for external listings
+            guard normalizedProperty.sellerId == nil else {
+                return false
+            }
+            
+            // All checks passed - external listing was correctly normalized
+            return true
+        }
+        
+        // Test normalization with various property types
+        property("External listings with different property types should be correctly normalized") <- forAll { (seed: Int) in
+            let propertyTypes = ["house", "apartment", "condo", "land", "commercial", "single family", "apt"]
+            let typeIndex = abs(seed) % propertyTypes.count
+            let propertyType = propertyTypes[typeIndex]
+            
+            let rawData: [String: Any] = [
+                "street": "123 Test St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 500000.0,
+                "property_type": propertyType,
+                "description": "Test property",
+                "latitude": 37.7749,
+                "longitude": -122.4194
+            ]
+            
+            let externalListing = ExternalListing(id: "test-\(seed)", rawData: rawData)
+            
+            let mlsClient = MLSAPIClient(
+                baseURL: URL(string: "https://api.example.com")!,
+                apiKey: "test-key"
+            )
+            
+            let normalizedProperty = mlsClient.normalizeToProperty(externalListing)
+            
+            // Verify the property type was correctly normalized
+            let expectedType: PropertyType
+            switch propertyType.lowercased() {
+            case "house", "single family", "single-family", "sfh":
+                expectedType = .house
+            case "apartment", "apt":
+                expectedType = .apartment
+            case "condo", "condominium":
+                expectedType = .condo
+            case "land", "lot":
+                expectedType = .land
+            case "commercial":
+                expectedType = .commercial
+            default:
+                expectedType = .house
+            }
+            
+            return normalizedProperty.propertyType == expectedType
+        }
+        
+        // Test normalization with missing optional fields
+        property("External listings with missing optional fields should normalize with defaults") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Create minimal external listing with only required fields
+            let rawData: [String: Any] = [
+                "street": "123 Test St",
+                "city": "Test City",
+                "state": "CA",
+                "zip_code": "12345",
+                "price": 500000.0,
+                "property_type": "house",
+                "latitude": 37.7749,
+                "longitude": -122.4194
+            ]
+            
+            let externalListing = ExternalListing(id: "test-\(seed)", rawData: rawData)
+            
+            let mlsClient = MLSAPIClient(
+                baseURL: URL(string: "https://api.example.com")!,
+                apiKey: "test-key"
+            )
+            
+            let normalizedProperty = mlsClient.normalizeToProperty(externalListing)
+            
+            // Verify required fields are present
+            guard normalizedProperty.address.street == "123 Test St",
+                  normalizedProperty.address.city == "Test City",
+                  normalizedProperty.address.state == "CA",
+                  normalizedProperty.price == Decimal(500000.0),
+                  normalizedProperty.propertyType == .house else {
+                return false
+            }
+            
+            // Verify optional fields have sensible defaults
+            guard !normalizedProperty.description.isEmpty else {
+                return false
+            }
+            
+            // Specifications should be present but may have nil values
+            guard normalizedProperty.specifications.bedrooms == nil,
+                  normalizedProperty.specifications.bathrooms == nil,
+                  normalizedProperty.specifications.squareFeet == nil else {
+                return false
+            }
+            
+            // Images should be empty array if not provided
+            guard normalizedProperty.images.isEmpty else {
+                return false
+            }
+            
+            return true
+        }
+    }
+    
+    // MARK: - Property-Based Test for Listing Source Attribution
+    
+    /// Feature: real-estate-listings, Property 28: Listing source attribution
+    /// Validates: Requirements 8.2
+    func testListingSourceAttribution() {
+        // Test that for any property listing, the display clearly indicates the data source
+        property("Property listings should clearly indicate their data source") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Generate properties from different sources
+            let sources: [ListingSource] = [.userGenerated, .mls, .zillow, .realtor, .other]
+            let sourceIndex = abs(seed) % sources.count
+            let testSource = sources[sourceIndex]
+            
+            // Create a property with the specific source
+            var testProperty = validPropertyGen().resize(seed).generate
+            testProperty.source = testSource
+            
+            // Step 1: Verify the source field is set correctly
+            guard testProperty.source == testSource else {
+                return false
+            }
+            
+            // Step 2: Verify the source is a valid ListingSource value
+            let validSources: [ListingSource] = [.userGenerated, .mls, .zillow, .realtor, .other]
+            guard validSources.contains(testProperty.source) else {
+                return false
+            }
+            
+            // Step 3: Verify the source can be converted to a displayable string
+            let sourceDisplayString = self.getSourceDisplayString(testProperty.source)
+            guard !sourceDisplayString.isEmpty else {
+                return false
+            }
+            
+            // Step 4: Verify the display string is appropriate for the source
+            switch testProperty.source {
+            case .userGenerated:
+                guard sourceDisplayString.lowercased().contains("user") || 
+                      sourceDisplayString.lowercased().contains("owner") ||
+                      sourceDisplayString.lowercased().contains("direct") else {
+                    return false
+                }
+            case .mls:
+                guard sourceDisplayString.uppercased().contains("MLS") else {
+                    return false
+                }
+            case .zillow:
+                guard sourceDisplayString.lowercased().contains("zillow") else {
+                    return false
+                }
+            case .realtor:
+                guard sourceDisplayString.lowercased().contains("realtor") else {
+                    return false
+                }
+            case .other:
+                guard sourceDisplayString.lowercased().contains("external") ||
+                      sourceDisplayString.lowercased().contains("other") ||
+                      sourceDisplayString.lowercased().contains("third") else {
+                    return false
+                }
+            }
+            
+            // All checks passed - source attribution is clear and correct
+            return true
+        }
+        
+        // Test that source attribution persists through storage round-trip
+        property("Source attribution should persist through storage round-trip") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let sources: [ListingSource] = [.userGenerated, .mls, .zillow, .realtor, .other]
+            let sourceIndex = abs(seed) % sources.count
+            let testSource = sources[sourceIndex]
+            
+            var testProperty = validPropertyGen().resize(seed).generate
+            testProperty.source = testSource
+            
+            let expectation = XCTestExpectation(description: "Source attribution persistence")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Save the property
+                    try await localDataSource.saveProperty(testProperty)
+                    
+                    // Retrieve the property
+                    guard let retrievedProperty = try await localDataSource.getProperty(id: testProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify the source is preserved
+                    guard retrievedProperty.source == testSource else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Verify the source display string is still valid
+                    let sourceDisplayString = self.getSourceDisplayString(retrievedProperty.source)
+                    guard !sourceDisplayString.isEmpty else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+        
+        // Test that external listings always have non-user-generated sources
+        property("External listings should have appropriate source attribution") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let externalListing = validExternalListingGen().resize(seed).generate
+            
+            // Create MLSAPIClient for normalization
+            let mlsClient = MLSAPIClient(
+                baseURL: URL(string: "https://api.example.com")!,
+                apiKey: "test-key"
+            )
+            
+            // Normalize the external listing to Property
+            let normalizedProperty = mlsClient.normalizeToProperty(externalListing)
+            
+            // Step 1: Verify the source is NOT user-generated
+            guard normalizedProperty.source != .userGenerated else {
+                return false
+            }
+            
+            // Step 2: Verify the source is set to MLS (since we're using MLSAPIClient)
+            guard normalizedProperty.source == .mls else {
+                return false
+            }
+            
+            // Step 3: Verify the source display string indicates external source
+            let sourceDisplayString = self.getSourceDisplayString(normalizedProperty.source)
+            guard !sourceDisplayString.isEmpty else {
+                return false
+            }
+            
+            // Step 4: Verify the display string clearly indicates MLS
+            guard sourceDisplayString.uppercased().contains("MLS") else {
+                return false
+            }
+            
+            // All checks passed - external listings have proper source attribution
+            return true
+        }
+        
+        // Test that user-generated listings have correct source attribution
+        property("User-generated listings should have user-generated source") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            var testProperty = validPropertyGen().resize(seed).generate
+            testProperty.source = .userGenerated
+            testProperty.sellerId = "seller-\(UUID().uuidString)" // User-generated listings should have a seller
+            
+            let expectation = XCTestExpectation(description: "User-generated source attribution")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    let mockRemote = MockRemoteDataSource(simulateNetworkDelay: false)
+                    let mockImageStorage = MockImageStorage()
+                    
+                    // Create repository and service
+                    let repository = PropertyRepository(
+                        localDataSource: localDataSource,
+                        remoteDataSource: mockRemote
+                    )
+                    let listingService = PropertyListingService(
+                        repository: repository,
+                        imageStorage: mockImageStorage
+                    )
+                    
+                    // Create the property through the listing service
+                    let createdProperty = try await listingService.createProperty(testProperty, imageDataArray: [])
+                    
+                    // Step 1: Verify the source is user-generated
+                    guard createdProperty.source == .userGenerated else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 2: Verify the property has a seller ID
+                    guard createdProperty.sellerId != nil else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 3: Verify the source display string indicates user-generated
+                    let sourceDisplayString = self.getSourceDisplayString(createdProperty.source)
+                    guard !sourceDisplayString.isEmpty else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 4: Retrieve the property and verify source is preserved
+                    guard let retrievedProperty = try await repository.getProperty(id: createdProperty.id) else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    guard retrievedProperty.source == .userGenerated else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 5.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for External Data Validation
+    
+    /// Feature: real-estate-listings, Property 29: External data validation
+    /// Validates: Requirements 8.3
+    func testExternalDataValidation() {
+        // Test that invalid external API data is rejected during validation
+        property("Invalid external data should be rejected") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let invalidListing = invalidExternalListingGen().resize(seed).generate
+            
+            // Attempt to validate the invalid listing
+            do {
+                try ExternalDataValidator.validate(invalidListing)
+                // If validation succeeds, the test fails (invalid data should be rejected)
+                return false
+            } catch {
+                // Validation correctly rejected the invalid data
+                return true
+            }
+        }
+        
+        // Test that valid external API data passes validation
+        property("Valid external data should pass validation") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let validListing = validExternalListingGen().resize(seed).generate
+            
+            // Attempt to validate the valid listing
+            do {
+                try ExternalDataValidator.validate(validListing)
+                // Validation succeeded as expected
+                return true
+            } catch {
+                // Validation failed when it should have succeeded
+                return false
+            }
+        }
+        
+        // Test that string sanitization removes harmful characters
+        property("String sanitization should remove control characters and trim whitespace") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Generate strings with control characters and whitespace
+            let testStrings = [
+                "  Normal String  ",
+                "String\nWith\nNewlines",
+                "String\tWith\tTabs",
+                "String\0With\0Nulls",
+                "  \n\t  Whitespace Only  \n\t  ",
+                "Control\u{0001}Characters\u{0002}Here"
+            ]
+            
+            let testString = testStrings[abs(seed) % testStrings.count]
+            
+            guard let sanitized = ExternalDataValidator.sanitizeString(testString) else {
+                // If the string becomes empty after sanitization, that's acceptable
+                return testString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            
+            // Verify sanitized string has no leading/trailing whitespace
+            guard sanitized == sanitized.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                return false
+            }
+            
+            // Verify sanitized string has no control characters
+            let hasControlCharacters = sanitized.unicodeScalars.contains { scalar in
+                CharacterSet.controlCharacters.contains(scalar)
+            }
+            guard !hasControlCharacters else {
+                return false
+            }
+            
+            // Verify sanitized string has no null bytes
+            guard !sanitized.contains("\0") else {
+                return false
+            }
+            
+            return true
+        }
+        
+        // Test that image URL sanitization filters invalid URLs
+        property("Image URL sanitization should filter invalid URLs") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Generate a mix of valid and invalid URLs
+            let urlStrings = [
+                "https://example.com/image1.jpg",
+                "http://example.com/image2.png",
+                "ftp://example.com/image3.jpg", // Invalid: not http/https
+                "not-a-url",
+                "javascript:alert('xss')", // Invalid: not http/https
+                "",
+                "https://valid.com/photo.jpg",
+                "file:///local/path.jpg" // Invalid: not http/https
+            ]
+            
+            let sanitizedURLs = ExternalDataValidator.sanitizeImageURLs(urlStrings)
+            
+            // Verify all returned URLs are valid and use http/https
+            for url in sanitizedURLs {
+                guard url.scheme == "http" || url.scheme == "https" else {
+                    return false
+                }
+            }
+            
+            // Verify invalid URLs were filtered out
+            // We should have fewer URLs than the input (since some are invalid)
+            let validCount = urlStrings.filter { urlString in
+                guard let url = URL(string: urlString) else { return false }
+                return url.scheme == "http" || url.scheme == "https"
+            }.count
+            
+            guard sanitizedURLs.count == validCount else {
+                return false
+            }
+            
+            return true
+        }
+        
+        // Test that specification validation rejects out-of-range values
+        property("Specification validation should reject out-of-range values") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Test various invalid specifications
+            let invalidSpecs: [[String: Any]] = [
+                ["bedrooms": -1], // Negative bedrooms
+                ["bedrooms": 100], // Excessive bedrooms (> 50)
+                ["bathrooms": -2.0], // Negative bathrooms
+                ["bathrooms": 100.0], // Excessive bathrooms (> 50)
+                ["square_feet": -1000], // Negative square feet
+                ["square_feet": 2_000_000], // Excessive square feet (> 1,000,000)
+                ["lot_size": -5000.0], // Negative lot size
+                ["lot_size": 20_000.0], // Excessive lot size (> 10,000)
+                ["year_built": 1500], // Too old (< 1800)
+                ["year_built": Calendar.current.component(.year, from: Date()) + 10] // Too far in future
+            ]
+            
+            let invalidSpec = invalidSpecs[abs(seed) % invalidSpecs.count]
+            
+            // Validate specifications - should return false for invalid data
+            let isValid = ExternalDataValidator.validateSpecifications(invalidSpec)
+            
+            return !isValid // Test passes if validation correctly returns false
+        }
+        
+        // Test that specification validation accepts valid values
+        property("Specification validation should accept valid values") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Test various valid specifications
+            let validSpecs: [[String: Any]] = [
+                ["bedrooms": 3, "bathrooms": 2.0],
+                ["square_feet": 2000, "lot_size": 5000.0],
+                ["year_built": 2000],
+                ["bedrooms": 0, "bathrooms": 1.0, "square_feet": 500],
+                ["bedrooms": 5, "bathrooms": 3.5, "square_feet": 3500, "lot_size": 8000.0, "year_built": 2020],
+                [:] // Empty specs should be valid (all optional)
+            ]
+            
+            let validSpec = validSpecs[abs(seed) % validSpecs.count]
+            
+            // Validate specifications - should return true for valid data
+            let isValid = ExternalDataValidator.validateSpecifications(validSpec)
+            
+            return isValid // Test passes if validation correctly returns true
+        }
+        
+        // Test that validation catches missing required fields
+        property("Validation should catch missing required fields") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            // Generate listings with specific missing fields
+            let missingFieldGenerators = [
+                missingStreetExternalListingGen(),
+                missingCityExternalListingGen(),
+                missingStateExternalListingGen(),
+                missingPropertyTypeExternalListingGen()
+            ]
+            
+            let generatorIndex = abs(seed) % missingFieldGenerators.count
+            let listingWithMissingField = missingFieldGenerators[generatorIndex].generate
+            
+            // Attempt to validate - should fail
+            do {
+                try ExternalDataValidator.validate(listingWithMissingField)
+                // Validation succeeded when it should have failed
+                return false
+            } catch {
+                // Validation correctly failed
+                return true
+            }
+        }
+        
+        // Test that validation catches invalid coordinate ranges
+        property("Validation should catch invalid coordinate ranges") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let invalidCoordinatesListing = invalidCoordinatesExternalListingGen().resize(seed).generate
+            
+            // Attempt to validate - should fail
+            do {
+                try ExternalDataValidator.validate(invalidCoordinatesListing)
+                // Validation succeeded when it should have failed
+                return false
+            } catch {
+                // Validation correctly failed
+                return true
+            }
+        }
+        
+        // Test that validation catches invalid prices
+        property("Validation should catch invalid prices") <- forAll(Gen.fromElements(in: 0...100)) { (seed: Int) in
+            let invalidPriceListing = invalidPriceExternalListingGen().resize(seed).generate
+            
+            // Attempt to validate - should fail
+            do {
+                try ExternalDataValidator.validate(invalidPriceListing)
+                // Validation succeeded when it should have failed
+                return false
+            } catch {
+                // Validation correctly failed
+                return true
+            }
+        }
+    }
+    
+    // MARK: - Property-Based Test for Multi-Source Listing Aggregation
+    
+    /// Feature: real-estate-listings, Property 30: Multi-source listing aggregation
+    /// Validates: Requirements 9.1
+    func testMultiSourceListingAggregation() {
+        // Test that listings are fetched from all configured external sources
+        property("Listings should be fetched from all enabled external sources") <- forAll(Gen.fromElements(in: 1...5)) { (sourceCount: Int) in
+            let expectation = XCTestExpectation(description: "Multi-source listing aggregation")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Create multiple mock external APIs with different sources
+                    var externalAPIs: [ExternalListingAPIProtocol] = []
+                    var expectedSources: Set<ListingSource> = []
+                    var expectedPropertyCount = 0
+                    
+                    // Add user-generated properties to local storage
+                    let localProperties = (0..<2).map { i in
+                        let template = validPropertyGen().resize(i * 17).generate
+                        return RealDeal.Property(
+                            id: "local-\(i)-\(UUID().uuidString)",
+                            address: template.address,
+                            price: template.price,
+                            propertyType: template.propertyType,
+                            description: template.description,
+                            specifications: template.specifications,
+                            images: template.images,
+                            location: template.location,
+                            source: .userGenerated,
+                            sellerId: template.sellerId,
+                            status: .active,
+                            createdAt: template.createdAt,
+                            updatedAt: template.updatedAt
+                        )
+                    }
+                    try await localDataSource.saveProperties(localProperties)
+                    expectedSources.insert(.userGenerated)
+                    expectedPropertyCount += localProperties.count
+                    
+                    // Create mock external APIs for different sources
+                    let availableSources: [ListingSource] = [.mls, .zillow, .realtor, .other]
+                    for i in 0..<min(sourceCount, availableSources.count) {
+                        let source = availableSources[i]
+                        let mockAPI = MockExternalAPI(source: source, propertyCount: 2)
+                        externalAPIs.append(mockAPI)
+                        expectedSources.insert(source)
+                        expectedPropertyCount += 2
+                    }
+                    
+                    // Create aggregation service with all external APIs
+                    let aggregationService = AggregationService(
+                        localDataSource: localDataSource,
+                        externalAPIs: externalAPIs,
+                        conflictResolution: .default,
+                        networkMonitor: NetworkMonitor.shared
+                    )
+                    
+                    // Fetch aggregated listings
+                    let searchParams = SearchParameters(
+                        location: nil,
+                        radius: nil,
+                        minPrice: nil,
+                        maxPrice: nil,
+                        propertyTypes: nil
+                    )
+                    
+                    let aggregatedListings = try await aggregationService.fetchAggregatedListings(parameters: searchParams)
+                    
+                    // Step 1: Verify we got listings from all sources
+                    let actualSources = Set(aggregatedListings.map { $0.source })
+                    guard actualSources == expectedSources else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 2: Verify we got the expected number of properties (or close to it, accounting for deduplication)
+                    // Since we're not creating duplicates in this test, we should get all properties
+                    guard aggregatedListings.count == expectedPropertyCount else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 3: Verify each source contributed properties
+                    for source in expectedSources {
+                        let propertiesFromSource = aggregatedListings.filter { $0.source == source }
+                        guard !propertiesFromSource.isEmpty else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // Step 4: Verify all properties are valid (have required fields)
+                    for property in aggregatedListings {
+                        guard !property.id.isEmpty,
+                              !property.address.street.isEmpty,
+                              !property.address.city.isEmpty,
+                              property.price > 0,
+                              !property.description.isEmpty else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // All checks passed - listings were successfully fetched from all sources
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Test failed due to error
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Duplicate Listing Elimination
+    
+    /// Feature: real-estate-listings, Property 31: Duplicate listing elimination
+    /// Validates: Requirements 9.2
+    func testDuplicateListingElimination() {
+        // Test that aggregated listings from multiple sources contain no duplicate properties
+        property("Aggregated listings should contain no duplicates") <- forAll { [self] (seed: Int) in
+            let expectation = XCTestExpectation(description: "Duplicate listing elimination")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Test Case: Multiple different properties with some duplicates
+                    // Create three unique properties with guaranteed unique addresses
+                    let baseProperty1 = validPropertyGen().resize(abs(seed * 17) % 1000).generate
+                    let baseProperty2 = validPropertyGen().resize(abs(seed * 31 + 500) % 1000).generate
+                    let baseProperty3 = validPropertyGen().resize(abs(seed * 47 + 1000) % 1000).generate
+                    
+                    // Ensure unique addresses by modifying the street address
+                    let property1 = RealDeal.Property(
+                        id: baseProperty1.id,
+                        address: Address(
+                            street: "100 First Street",
+                            city: baseProperty1.address.city,
+                            state: baseProperty1.address.state,
+                            zipCode: "10001",
+                            country: baseProperty1.address.country
+                        ),
+                        price: baseProperty1.price,
+                        propertyType: baseProperty1.propertyType,
+                        description: baseProperty1.description,
+                        specifications: baseProperty1.specifications,
+                        images: baseProperty1.images,
+                        location: Coordinate(latitude: 40.7128, longitude: -74.0060),
+                        source: baseProperty1.source,
+                        sellerId: baseProperty1.sellerId,
+                        status: baseProperty1.status,
+                        createdAt: baseProperty1.createdAt,
+                        updatedAt: baseProperty1.updatedAt
+                    )
+                    
+                    let property2 = RealDeal.Property(
+                        id: baseProperty2.id,
+                        address: Address(
+                            street: "200 Second Avenue",
+                            city: baseProperty2.address.city,
+                            state: baseProperty2.address.state,
+                            zipCode: "20002",
+                            country: baseProperty2.address.country
+                        ),
+                        price: baseProperty2.price,
+                        propertyType: baseProperty2.propertyType,
+                        description: baseProperty2.description,
+                        specifications: baseProperty2.specifications,
+                        images: baseProperty2.images,
+                        location: Coordinate(latitude: 34.0522, longitude: -118.2437),
+                        source: baseProperty2.source,
+                        sellerId: baseProperty2.sellerId,
+                        status: baseProperty2.status,
+                        createdAt: baseProperty2.createdAt,
+                        updatedAt: baseProperty2.updatedAt
+                    )
+                    
+                    let property3 = RealDeal.Property(
+                        id: baseProperty3.id,
+                        address: Address(
+                            street: "300 Third Boulevard",
+                            city: baseProperty3.address.city,
+                            state: baseProperty3.address.state,
+                            zipCode: "30003",
+                            country: baseProperty3.address.country
+                        ),
+                        price: baseProperty3.price,
+                        propertyType: baseProperty3.propertyType,
+                        description: baseProperty3.description,
+                        specifications: baseProperty3.specifications,
+                        images: baseProperty3.images,
+                        location: Coordinate(latitude: 41.8781, longitude: -87.6298),
+                        source: baseProperty3.source,
+                        sellerId: baseProperty3.sellerId,
+                        status: baseProperty3.status,
+                        createdAt: baseProperty3.createdAt,
+                        updatedAt: baseProperty3.updatedAt
+                    )
+                    
+                    // Create APIs with duplicates and unique properties
+                    var mixedAPIs: [ExternalListingAPIProtocol] = []
+                    
+                    // Add property1 from two sources (duplicate)
+                    mixedAPIs.append(MockExternalAPIWithDuplicates(source: .mls, baseProperty: property1))
+                    mixedAPIs.append(MockExternalAPIWithDuplicates(source: .zillow, baseProperty: property1))
+                    
+                    // Add property2 from one source (unique)
+                    mixedAPIs.append(MockExternalAPIWithDuplicates(source: .realtor, baseProperty: property2))
+                    
+                    // Add property3 from one source (unique)
+                    mixedAPIs.append(MockExternalAPIWithDuplicates(source: .other, baseProperty: property3))
+                    
+                    let aggregationService = AggregationService(
+                        localDataSource: localDataSource,
+                        externalAPIs: mixedAPIs,
+                        conflictResolution: .default,
+                        networkMonitor: NetworkMonitor.shared
+                    )
+                    
+                    // Fetch aggregated listings
+                    let searchParams = SearchParameters(
+                        location: nil,
+                        radius: nil,
+                        minPrice: nil,
+                        maxPrice: nil,
+                        propertyTypes: nil
+                    )
+                    
+                    let aggregatedListings = try await aggregationService.fetchAggregatedListings(parameters: searchParams)
+                    
+                    // Step 1: Verify we got exactly 3 properties (property1 deduplicated, property2 and property3 unique)
+                    guard aggregatedListings.count == 3 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 2: Verify each unique property appears exactly once by checking addresses
+                    let uniqueAddresses = Set(aggregatedListings.map { property in
+                        "\(property.address.street)|\(property.address.city)|\(property.address.state)|\(property.address.zipCode)"
+                    })
+                    guard uniqueAddresses.count == 3 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 3: Verify that the three properties in the result match our three unique properties
+                    let expectedAddresses = Set([property1, property2, property3].map { property in
+                        "\(property.address.street)|\(property.address.city)|\(property.address.state)|\(property.address.zipCode)"
+                    })
+                    guard uniqueAddresses == expectedAddresses else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 4: Verify no property appears more than once
+                    let addressCounts = aggregatedListings.map { property in
+                        "\(property.address.street)|\(property.address.city)|\(property.address.state)|\(property.address.zipCode)"
+                    }.reduce(into: [:]) { counts, address in
+                        counts[address, default: 0] += 1
+                    }
+                    
+                    for (_, count) in addressCounts {
+                        guard count == 1 else {
+                            result = false
+                            expectation.fulfill()
+                            return
+                        }
+                    }
+                    
+                    // All checks passed - duplicates were successfully eliminated
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Test failed due to error
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
+    // MARK: - Property-Based Test for Conflict Resolution Prioritization
+    
+    /// Feature: real-estate-listings, Property 32: Conflict resolution prioritization
+    /// Validates: Requirements 9.5
+    func testConflictResolutionPrioritization() {
+        // Test that when conflicting listing data comes from different sources, the configured prioritization rules are applied correctly
+        property("Conflict resolution should prioritize sources according to configured rules") <- forAll { [self] (seed: Int) in
+            let expectation = XCTestExpectation(description: "Conflict resolution prioritization")
+            var result = false
+            
+            Task {
+                do {
+                    // Use in-memory persistence controller for testing
+                    let testPersistence = PersistenceController(inMemory: true)
+                    let localDataSource = LocalDataSource(persistenceController: testPersistence)
+                    
+                    // Create a base property that will be duplicated across multiple sources
+                    let baseProperty = validPropertyGen().resize(abs(seed) % 1000).generate
+                    
+                    // Create the same property from different sources with different data
+                    // All will have the same address and location (making them duplicates)
+                    // but different prices and descriptions
+                    
+                    let sharedAddress = Address(
+                        street: "123 Conflict Street",
+                        city: "Test City",
+                        state: "CA",
+                        zipCode: "12345",
+                        country: "USA"
+                    )
+                    let sharedLocation = Coordinate(latitude: 37.7749, longitude: -122.4194)
+                    
+                    // Property from user-generated source (highest priority: 100)
+                    let userGeneratedProperty = RealDeal.Property(
+                        id: "user-gen-\(seed)",
+                        address: sharedAddress,
+                        price: 500000,
+                        propertyType: baseProperty.propertyType,
+                        description: "User-generated description",
+                        specifications: baseProperty.specifications,
+                        images: baseProperty.images,
+                        location: sharedLocation,
+                        source: .userGenerated,
+                        sellerId: "user-seller",
+                        status: .active,
+                        createdAt: Date(),
+                        updatedAt: Date()
+                    )
+                    
+                    // Property from MLS source (priority: 80)
+                    let mlsProperty = RealDeal.Property(
+                        id: "mls-\(seed)",
+                        address: sharedAddress,
+                        price: 510000,
+                        propertyType: baseProperty.propertyType,
+                        description: "MLS description",
+                        specifications: baseProperty.specifications,
+                        images: baseProperty.images,
+                        location: sharedLocation,
+                        source: .mls,
+                        sellerId: "mls-seller",
+                        status: .active,
+                        createdAt: Date(),
+                        updatedAt: Date()
+                    )
+                    
+                    // Property from Zillow source (priority: 60)
+                    let zillowProperty = RealDeal.Property(
+                        id: "zillow-\(seed)",
+                        address: sharedAddress,
+                        price: 520000,
+                        propertyType: baseProperty.propertyType,
+                        description: "Zillow description",
+                        specifications: baseProperty.specifications,
+                        images: baseProperty.images,
+                        location: sharedLocation,
+                        source: .zillow,
+                        sellerId: "zillow-seller",
+                        status: .active,
+                        createdAt: Date(),
+                        updatedAt: Date()
+                    )
+                    
+                    // Property from other source (priority: 40)
+                    let otherProperty = RealDeal.Property(
+                        id: "other-\(seed)",
+                        address: sharedAddress,
+                        price: 530000,
+                        propertyType: baseProperty.propertyType,
+                        description: "Other source description",
+                        specifications: baseProperty.specifications,
+                        images: baseProperty.images,
+                        location: sharedLocation,
+                        source: .other,
+                        sellerId: "other-seller",
+                        status: .active,
+                        createdAt: Date(),
+                        updatedAt: Date()
+                    )
+                    
+                    // Create mock APIs that return these conflicting properties
+                    // Note: The MockExternalAPIWithDuplicates will use the source parameter to set the source
+                    // on the normalized property, so we pass the base property data but the source will be overridden
+                    let mockAPIs: [ExternalListingAPIProtocol] = [
+                        MockExternalAPIWithDuplicates(source: .userGenerated, baseProperty: userGeneratedProperty),
+                        MockExternalAPIWithDuplicates(source: .mls, baseProperty: mlsProperty),
+                        MockExternalAPIWithDuplicates(source: .zillow, baseProperty: zillowProperty),
+                        MockExternalAPIWithDuplicates(source: .other, baseProperty: otherProperty)
+                    ]
+                    
+                    // Use default conflict resolution config (user-generated has highest priority)
+                    let aggregationService = AggregationService(
+                        localDataSource: localDataSource,
+                        externalAPIs: mockAPIs,
+                        conflictResolution: .default,
+                        networkMonitor: NetworkMonitor.shared
+                    )
+                    
+                    // Fetch aggregated listings
+                    let searchParams = SearchParameters(
+                        location: nil,
+                        radius: nil,
+                        minPrice: nil,
+                        maxPrice: nil,
+                        propertyTypes: nil
+                    )
+                    
+                    let aggregatedListings = try await aggregationService.fetchAggregatedListings(parameters: searchParams)
+                    
+                    // Step 1: Verify we got exactly 1 property (all duplicates resolved to one)
+                    guard aggregatedListings.count == 1 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    let resolvedProperty = aggregatedListings[0]
+                    
+                    // Step 2: Verify the resolved property is from the highest priority source (user-generated)
+                    guard resolvedProperty.source == .userGenerated else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 3: Verify the resolved property has the data from the user-generated source
+                    guard resolvedProperty.price == 500000 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    guard resolvedProperty.description == "User-generated description" else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    guard resolvedProperty.sellerId == "user-seller" else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 4: Test with custom conflict resolution config
+                    // Create a config that prioritizes MLS over user-generated
+                    let customConfig = ConflictResolutionConfig(
+                        sourcePriority: [
+                            .mls: 100,
+                            .userGenerated: 80,
+                            .zillow: 60,
+                            .realtor: 60,
+                            .other: 40
+                        ]
+                    )
+                    
+                    let customAggregationService = AggregationService(
+                        localDataSource: localDataSource,
+                        externalAPIs: mockAPIs,
+                        conflictResolution: customConfig,
+                        networkMonitor: NetworkMonitor.shared
+                    )
+                    
+                    let customAggregatedListings = try await customAggregationService.fetchAggregatedListings(parameters: searchParams)
+                    
+                    // Step 5: Verify we got exactly 1 property with custom config
+                    guard customAggregatedListings.count == 1 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    let customResolvedProperty = customAggregatedListings[0]
+                    
+                    // Step 6: Verify the resolved property is now from MLS (highest priority in custom config)
+                    guard customResolvedProperty.source == .mls else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // Step 7: Verify the resolved property has the data from the MLS source
+                    guard customResolvedProperty.price == 510000 else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    guard customResolvedProperty.description == "MLS description" else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    guard customResolvedProperty.sellerId == "mls-seller" else {
+                        result = false
+                        expectation.fulfill()
+                        return
+                    }
+                    
+                    // All checks passed - conflict resolution correctly prioritizes sources
+                    result = true
+                    expectation.fulfill()
+                } catch {
+                    // Test failed due to error
+                    result = false
+                    expectation.fulfill()
+                }
+            }
+            
+            self.wait(for: [expectation], timeout: 10.0)
+            return result
+        }
+    }
+    
+    // MARK: - Helper Methods for Source Display
+    
+    /// Get a display string for a listing source
+    func getSourceDisplayString(_ source: ListingSource) -> String {
+        switch source {
+        case .userGenerated:
+            return "Owner Listed"
+        case .mls:
+            return "MLS"
+        case .zillow:
+            return "Zillow"
+        case .realtor:
+            return "Realtor.com"
+        case .other:
+            return "External Source"
         }
     }
     
