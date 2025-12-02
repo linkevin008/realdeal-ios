@@ -21,8 +21,8 @@ let package = Package(
             path: "RealDeal",
             exclude: [
                 "Info.plist",
-                "RealDealApp.swift",
-                "RealDealApp.entitlements",
+                "RealDeal.swift",
+                "RealDeal.entitlements",
                 "README.md",
                 "Services/FilterService_README.md",
                 "Services/ExternalListingAPI_README.md",
