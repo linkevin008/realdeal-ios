@@ -20,63 +20,64 @@ struct PropertyFiltersView: View {
             Form {
                 // Price Range Section
                 Section(header: Text("Price Range")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Min: \(formatPrice(Decimal(minPrice)))")
-                            Spacer()
-                            Text("Max: \(formatPrice(Decimal(maxPrice)))")
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        
-                        VStack(spacing: 16) {
-                            VStack(alignment: .leading) {
-                                Text("Minimum Price")
-                                    .font(.caption)
-                                Slider(value: $minPrice, in: 0...5_000_000, step: 50_000)
-                            }
-                            
-                            VStack(alignment: .leading) {
-                                Text("Maximum Price")
-                                    .font(.caption)
-                                Slider(value: $maxPrice, in: 0...5_000_000, step: 50_000)
-                            }
-                        }
-                    }
+                    let priceFormatter = NumberFormatter()
+                    
+                    LabeledSlider(
+                        label: "Minimum Price",
+                        range: 0...5_000_000,
+                        value: $minPrice,
+                        step: 50_000,
+                        formatter: {
+                            let formatter = NumberFormatter()
+                            formatter.numberStyle = .currency
+                            formatter.maximumFractionDigits = 0
+                            return formatter
+                        }()
+                    )
+                    
+                    LabeledSlider(
+                        label: "Maximum Price",
+                        range: 0...5_000_000,
+                        value: $maxPrice,
+                        step: 50_000,
+                        formatter: {
+                            let formatter = NumberFormatter()
+                            formatter.numberStyle = .currency
+                            formatter.maximumFractionDigits = 0
+                            return formatter
+                        }()
+                    )
                 }
                 
                 // Property Type Section
                 Section(header: Text("Property Type")) {
-                    ForEach(PropertyType.allCases, id: \.self) { type in
-                        Toggle(type.rawValue.capitalized, isOn: Binding(
-                            get: { selectedTypes.contains(type) },
-                            set: { isSelected in
-                                if isSelected {
-                                    selectedTypes.insert(type)
-                                } else {
-                                    selectedTypes.remove(type)
-                                }
-                            }
-                        ))
-                    }
+                    CheckboxGroup(
+                        options: PropertyType.allCases.map { ($0, $0.rawValue.capitalized) },
+                        selection: $selectedTypes
+                    )
                 }
                 
                 // Location Section
                 Section(header: Text("Location")) {
-                    Toggle("Filter by location", isOn: $useLocationFilter)
+                    RealDealToggle(
+                        label: "Filter by location",
+                        description: "Use your current location to filter nearby properties",
+                        isOn: $useLocationFilter
+                    )
                     
                     if useLocationFilter {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Radius: \(Int(locationRadius)) miles")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Slider(value: $locationRadius, in: 1...100, step: 1)
-                        }
-                        
-                        Text("Location filter will use your current location")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        LabeledSlider(
+                            label: "Search Radius",
+                            range: 1...100,
+                            value: $locationRadius,
+                            step: 1,
+                            formatter: {
+                                let formatter = NumberFormatter()
+                                formatter.numberStyle = .none
+                                formatter.positiveSuffix = " miles"
+                                return formatter
+                            }()
+                        )
                     }
                 }
                 
@@ -93,23 +94,15 @@ struct PropertyFiltersView: View {
                 // Action Buttons
                 Section {
                     Button(action: applyFilters) {
-                        HStack {
-                            Spacer()
-                            Text("Apply Filters")
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
+                        Text("Apply Filters")
+                            .fontWeight(.semibold)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .primaryButtonStyle(isLoading: viewModel.isLoading)
                     
                     Button(action: clearFilters) {
-                        HStack {
-                            Spacer()
-                            Text("Clear All Filters")
-                            Spacer()
-                        }
+                        Text("Clear All Filters")
                     }
-                    .foregroundColor(.red)
+                    .secondaryButtonStyle()
                 }
             }
             .navigationTitle("Filters")

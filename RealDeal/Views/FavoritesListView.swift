@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// View displaying the user's favorite properties
-@available(iOS 15.0, macOS 12.0, *)
+@available(iOS 17.0, macOS 13.0, *)
 struct FavoritesListView: View {
     @StateObject private var viewModel: FavoritesViewModel
     @State private var selectedProperty: Property?
@@ -11,70 +11,55 @@ struct FavoritesListView: View {
     }
     
     var body: some View {
-        NavigationView {
-            Group {
-                if viewModel.isLoading {
-                    ProgressView("Loading favorites...")
-                } else if let errorMessage = viewModel.errorMessage {
-                    VStack(spacing: 16) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.orange)
-                        Text(errorMessage)
-                            .multilineTextAlignment(.center)
-                        Button("Try Again") {
-                            Task {
-                                await viewModel.loadFavorites()
-                            }
-                        }
-                        .buttonStyle(.bordered)
+        Group {
+            if viewModel.isLoading {
+                PropertyListSkeleton(itemCount: 2)
+                    .fadeInOnAppear()
+            } else if let errorMessage = viewModel.errorMessage {
+                EmptyStateView.networkError {
+                    Task {
+                        await viewModel.loadFavorites()
                     }
-                    .padding()
-                } else if viewModel.favoriteProperties.isEmpty {
-                    emptyStateView
-                } else {
-                    favoritesList
                 }
+                .fadeInOnAppear()
+            } else if viewModel.favoriteProperties.isEmpty {
+                emptyStateView
+                    .fadeInOnAppear()
+            } else {
+                favoritesList
             }
-            .navigationTitle("Favorites")
-            .refreshable {
-                await viewModel.refreshFavorites()
-            }
-            .task {
-                await viewModel.loadFavorites()
-            }
+        }
+        .navigationTitle("Favorites")
+        .refreshable {
+            await viewModel.refreshFavorites()
+        }
+        .task {
+            await viewModel.loadFavorites()
         }
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "heart.slash")
-                .font(.system(size: 64))
-                .foregroundColor(.gray)
-            Text("No Favorites Yet")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("Properties you favorite will appear here")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
+        EmptyStateView.noFavorites()
     }
     
+    @available(iOS 17.0, macOS 13.0, *)
     private var favoritesList: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                ForEach(viewModel.favoriteProperties) { property in
-                    PropertyCardView(
-                        property: property,
-                        isFavorite: true,
-                        onFavoriteToggle: {
-                            Task {
-                                await viewModel.removeFavorite(propertyId: property.id)
+                ForEach(Array(viewModel.favoriteProperties.enumerated()), id: \.element.id) { index, property in
+                    NavigationLink(value: NavigationCoordinator.Destination.propertyDetail(propertyId: property.id)) {
+                        PropertyCardView(
+                            property: property,
+                            isFavorite: true,
+                            onFavoriteToggle: {
+                                Task {
+                                    await viewModel.removeFavorite(propertyId: property.id)
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .staggeredListAnimation(index: index)
                 }
             }
             .padding()

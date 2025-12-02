@@ -79,10 +79,8 @@ struct MapView: View {
             
             // Loading indicator
             if viewModel.isLoading {
-                ProgressView()
-                    .scaleEffect(1.5)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black.opacity(0.2))
+                LoadingIndicator(style: .overlay, message: "Loading properties...")
+                    .fadeInOnAppear()
             }
         }
         .sheet(isPresented: $showingFilters) {

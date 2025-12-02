@@ -151,6 +151,7 @@ struct PropertyCreationView: View {
                                     await viewModel.updateStatus(viewModel.propertyStatus)
                                 }
                             }
+                            .secondaryButtonStyle(isLoading: viewModel.isLoading)
                         }
                     }
                 }
@@ -197,7 +198,7 @@ struct PropertyCreationView: View {
                             }
                         }
                     }
-                    .disabled(!viewModel.canSave)
+                    .primaryButtonStyle(isLoading: viewModel.isLoading, isDisabled: !viewModel.canSave)
                 }
             }
             .sheet(isPresented: $showImagePicker) {
@@ -224,18 +225,15 @@ struct PropertyCreationView: View {
                         showDeleteAlert = true
                     } label: {
                         Label("Delete Property", systemImage: "trash")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red.opacity(0.1))
                     }
+                    .destructiveButtonStyle(isLoading: viewModel.isLoading)
+                    .padding()
                 }
             }
             .overlay {
                 if viewModel.isLoading {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.black.opacity(0.2))
+                    LoadingIndicator(style: .overlay, message: "Saving...")
+                        .fadeInOnAppear()
                 }
             }
         }

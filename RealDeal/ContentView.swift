@@ -2,12 +2,13 @@ import SwiftUI
 
 @available(iOS 17.0, macOS 12.0, *)
 struct ContentView: View {
-    // Initialize repositories
+    // Initialize repositories and services
     private let persistenceController = PersistenceController.shared
     private let localDataSource: LocalDataSource
     private let mockRemoteDataSource: MockRemoteDataSource
     private let propertyRepository: PropertyRepository
     private let userProfileRepository: UserProfileRepository
+    private let favoritesRepository: FavoritesRepository
     private let propertyListingService: PropertyListingService
     
     init() {
@@ -24,6 +25,10 @@ struct ContentView: View {
             localDataSource: localDataSource,
             remoteDataSource: mockRemoteDataSource
         )
+        self.favoritesRepository = FavoritesRepository(
+            localDataSource: localDataSource,
+            remoteDataSource: mockRemoteDataSource
+        )
         
         // Set up services
         self.propertyListingService = PropertyListingService(
@@ -33,42 +38,12 @@ struct ContentView: View {
     
     var body: some View {
         #if os(iOS)
-        TabView {
-            // Browse Tab
-            NavigationStack {
-                PropertyListView(viewModel: PropertyListViewModel(repository: propertyRepository))
-            }
-            .tabItem {
-                Label("Browse", systemImage: "list.bullet")
-            }
-            
-            // Map Tab
-            NavigationStack {
-                MapView(repository: propertyRepository, userProfileRepository: userProfileRepository)
-            }
-            .tabItem {
-                Label("Map", systemImage: "map")
-            }
-            
-            // My Listings Tab
-            NavigationStack {
-                MyListingsView(viewModel: MyListingsViewModel(
-                    service: propertyListingService,
-                    currentUserId: "demo-user-id"  // TODO: Replace with actual user ID from auth
-                ))
-            }
-            .tabItem {
-                Label("My Listings", systemImage: "house.fill")
-            }
-            
-            // Profile Tab
-            NavigationStack {
-                ProfileView(viewModel: ProfileViewModel(repository: userProfileRepository), isOwnProfile: true)
-            }
-            .tabItem {
-                Label("Profile", systemImage: "person.fill")
-            }
-        }
+        MainTabView(
+            propertyRepository: propertyRepository,
+            userProfileRepository: userProfileRepository,
+            favoritesRepository: favoritesRepository,
+            propertyListingService: propertyListingService
+        )
         #else
         Text("Real Estate Listings - macOS version coming soon")
             .padding()

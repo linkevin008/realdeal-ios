@@ -177,8 +177,18 @@ struct ImageGalleryView: View {
                     AsyncImage(url: image.url) { phase in
                         switch phase {
                         case .empty:
-                            ProgressView()
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.2))
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .overlay(
+                                    VStack(spacing: 8) {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                        Text("Loading...")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                )
                         case .success(let image):
                             image
                                 .resizable()
@@ -280,8 +290,14 @@ struct SellerProfileView: View {
                 .font(.headline)
             
             if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading seller info...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
             } else if let profile = sellerProfile {
                 HStack(spacing: 12) {
                     // Profile Photo

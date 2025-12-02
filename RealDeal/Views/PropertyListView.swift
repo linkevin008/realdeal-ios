@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Main property browsing view with filtering and search
-@available(iOS 15.0, macOS 12.0, *)
+@available(iOS 17.0, macOS 13.0, *)
 struct PropertyListView: View {
     @StateObject private var viewModel: PropertyListViewModel
     @State private var showFilters = false
@@ -11,77 +11,69 @@ struct PropertyListView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                if viewModel.isLoading && viewModel.properties.isEmpty {
-                    ProgressView("Loading properties...")
-                } else if let errorMessage = viewModel.errorMessage, viewModel.properties.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.orange)
-                        Text(errorMessage)
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.secondary)
-                        Button("Try Again") {
-                            Task {
-                                await viewModel.loadProperties()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
+        ZStack {
+            if viewModel.isLoading && viewModel.properties.isEmpty {
+                PropertyListSkeleton(itemCount: 3)
+                    .fadeInOnAppear()
+            } else if let errorMessage = viewModel.errorMessage, viewModel.properties.isEmpty {
+                EmptyStateView.networkError {
+                    Task {
+                        await viewModel.loadProperties()
                     }
-                    .padding()
-                } else if viewModel.properties.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "house.slash")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        Text("No properties found")
-                            .font(.headline)
-                        Text("Try adjusting your filters")
-                            .foregroundColor(.secondary)
-                    }
-                } else {
-                    propertyListContent
                 }
+                .fadeInOnAppear()
+            } else if viewModel.properties.isEmpty {
+                EmptyStateView.noProperties {
+                    Task {
+                        await viewModel.loadProperties()
+                    }
+                }
+                .fadeInOnAppear()
+            } else {
+                propertyListContent
             }
-            .navigationTitle("Browse Properties")
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button(action: { showFilters.toggle() }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                            if viewModel.hasActiveFilters {
-                                Circle()
-                                    .fill(Color.blue)
-                                    .frame(width: 8, height: 8)
-                            }
+        }
+        .navigationTitle("Browse Properties")
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { showFilters.toggle() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        if viewModel.hasActiveFilters {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 8, height: 8)
                         }
                     }
                 }
             }
-            .sheet(isPresented: $showFilters) {
-                PropertyFiltersView(viewModel: viewModel)
-            }
-            .task {
-                await viewModel.loadProperties()
-            }
+        }
+        .sheet(isPresented: $showFilters) {
+            PropertyFiltersView(viewModel: viewModel)
+        }
+        .task {
+            await viewModel.loadProperties()
         }
     }
     
+    @available(iOS 17.0, macOS 13.0, *)
     private var propertyListContent: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                ForEach(viewModel.properties) { property in
-                    PropertyCardView(
-                        property: property,
-                        isFavorite: viewModel.isFavorite(propertyId: property.id),
-                        onFavoriteToggle: {
-                            Task {
-                                await viewModel.toggleFavorite(propertyId: property.id)
+                ForEach(Array(viewModel.properties.enumerated()), id: \.element.id) { index, property in
+                    NavigationLink(value: NavigationCoordinator.Destination.propertyDetail(propertyId: property.id)) {
+                        PropertyCardView(
+                            property: property,
+                            isFavorite: viewModel.isFavorite(propertyId: property.id),
+                            onFavoriteToggle: {
+                                Task {
+                                    await viewModel.toggleFavorite(propertyId: property.id)
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .staggeredListAnimation(index: index)
                     .onAppear {
                         // Load more when reaching the last item
                         if property.id == viewModel.properties.last?.id {
@@ -91,28 +83,44 @@ struct PropertyListView: View {
                         }
                     }
                 }
-                
-                if viewModel.isLoading {
-                    ProgressView()
-                        .padding()
-                }
             }
             .padding()
+            
+            if viewModel.isLoading {
+                LoadingIndicator(style: .inline, message: "Loading more...")
+                    .padding()
+            }
         }
         .refreshable {
             await viewModel.refreshProperties()
         }
+        .errorBanner(error: $viewModel.error) {
+            Task {
+                await viewModel.retryLoadProperties()
+            }
+        }
+        .successBanner(message: $viewModel.successMessage)
     }
 }
 
 /// Property card displaying key property details
-@available(iOS 15.0, macOS 12.0, *)
+@available(iOS 17.0, macOS 13.0, *)
 struct PropertyCardView: View {
     let property: Property
     var isFavorite: Bool = false
     var onFavoriteToggle: (() -> Void)? = nil
+    var onTap: (() -> Void)? = nil
     
     var body: some View {
+        Button(action: {
+            onTap?()
+        }) {
+            cardContent
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var cardContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Property image with favorite button overlay
             ZStack(alignment: .topTrailing) {
@@ -120,10 +128,7 @@ struct PropertyCardView: View {
                     AsyncImage(url: firstImage.url) { phase in
                         switch phase {
                         case .empty:
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(height: 200)
-                                .overlay(ProgressView())
+                            ImageLoadingPlaceholder(height: 200)
                         case .success(let image):
                             image
                                 .resizable()

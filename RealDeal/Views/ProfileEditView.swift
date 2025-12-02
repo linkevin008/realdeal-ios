@@ -148,7 +148,7 @@ struct ProfileEditView: View {
                             }
                         }
                     }
-                    .disabled(!viewModel.canSave || viewModel.isLoading)
+                    .primaryButtonStyle(isLoading: viewModel.isLoading, isDisabled: !viewModel.canSave)
                 }
                 #else
                 ToolbarItem(placement: .cancellationAction) {
@@ -172,7 +172,7 @@ struct ProfileEditView: View {
                             }
                         }
                     }
-                    .disabled(!viewModel.canSave || viewModel.isLoading)
+                    .primaryButtonStyle(isLoading: viewModel.isLoading, isDisabled: !viewModel.canSave)
                 }
                 #endif
             }
@@ -199,7 +199,7 @@ struct ProfileEditView: View {
                     Label("Choose Photo", systemImage: "photo")
                         .font(.caption)
                 }
-                .disabled(viewModel.isLoading || viewModel.isUploadingPhoto)
+                .compactButtonStyle(isLoading: viewModel.isUploadingPhoto, isDisabled: viewModel.isLoading)
                 #endif
                 
                 if viewModel.profilePhotoData != nil || viewModel.profile?.profilePhotoURL != nil {
@@ -209,13 +209,12 @@ struct ProfileEditView: View {
                         Label("Remove", systemImage: "trash")
                             .font(.caption)
                     }
-                    .disabled(viewModel.isLoading || viewModel.isUploadingPhoto)
+                    .compactButtonStyle(isDisabled: viewModel.isLoading || viewModel.isUploadingPhoto)
                 }
             }
             
             if viewModel.isUploadingPhoto {
-                ProgressView("Uploading photo...")
-                    .font(.caption)
+                LoadingIndicator(style: .inline, message: "Uploading photo...")
             }
         }
         .frame(maxWidth: .infinity)
@@ -251,8 +250,7 @@ struct ProfileEditView: View {
         AsyncImage(url: photoURL) { phase in
             switch phase {
             case .empty:
-                ProgressView()
-                    .frame(width: 120, height: 120)
+                SkeletonView(width: 120, height: 120, cornerRadius: 60)
             case .success(let image):
                 image
                     .resizable()

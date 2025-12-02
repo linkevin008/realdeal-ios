@@ -5,18 +5,15 @@ class PropertyRepository: PropertyRepositoryProtocol {
     private let localDataSource: LocalDataSourceProtocol
     private let remoteDataSource: RemoteDataSourceProtocol
     private let networkMonitor: NetworkMonitor
-    private let retryPolicy: RetryPolicy
     
     init(
         localDataSource: LocalDataSourceProtocol,
         remoteDataSource: RemoteDataSourceProtocol,
-        networkMonitor: NetworkMonitor = .shared,
-        retryPolicy: RetryPolicy = .default
+        networkMonitor: NetworkMonitor = .shared
     ) {
         self.localDataSource = localDataSource
         self.remoteDataSource = remoteDataSource
         self.networkMonitor = networkMonitor
-        self.retryPolicy = retryPolicy
     }
     
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property] {
@@ -24,9 +21,7 @@ class PropertyRepository: PropertyRepositoryProtocol {
         if networkMonitor.isConnected {
             do {
                 // Use retry logic for network requests
-                let properties = try await RetryExecutor.execute(policy: retryPolicy) {
-                    try await self.remoteDataSource.fetchProperties(filters: filters)
-                }
+                let properties = try await remoteDataSource.fetchProperties(filters: filters)
                 
                 // Cache the results locally
                 try await localDataSource.saveProperties(properties)
@@ -57,12 +52,7 @@ class PropertyRepository: PropertyRepositoryProtocol {
         if networkMonitor.isConnected {
             do {
                 // Use retry logic with timeout for create operations
-                let remoteProperty = try await RetryExecutor.executeWithTimeout(
-                    policy: retryPolicy,
-                    timeout: 30.0
-                ) {
-                    try await self.remoteDataSource.createProperty(property)
-                }
+                let remoteProperty = try await remoteDataSource.createProperty(property)
                 
                 // Update local cache with remote version
                 try await localDataSource.saveProperty(remoteProperty)
@@ -85,12 +75,7 @@ class PropertyRepository: PropertyRepositoryProtocol {
         if networkMonitor.isConnected {
             do {
                 // Use retry logic for update operations
-                try await RetryExecutor.executeWithTimeout(
-                    policy: retryPolicy,
-                    timeout: 30.0
-                ) {
-                    try await self.remoteDataSource.updateProperty(property)
-                }
+                try await remoteDataSource.updateProperty(property)
             } catch {
                 // If remote fails, local update is still saved
                 // In a production app, you'd queue this for later sync
@@ -110,9 +95,7 @@ class PropertyRepository: PropertyRepositoryProtocol {
         if networkMonitor.isConnected {
             do {
                 // Use retry logic for delete operations
-                try await RetryExecutor.execute(policy: retryPolicy) {
-                    try await self.remoteDataSource.deleteProperty(id: id)
-                }
+                try await remoteDataSource.deleteProperty(id: id)
             } catch {
                 // If remote fails, local deletion is still done
                 // In a production app, you'd queue this for later sync

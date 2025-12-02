@@ -12,6 +12,10 @@ class PropertyListViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var error: AppError?
+    @Published var successMessage: String?
+    
+    // Loading state management
+    @Published var loadingStateManager = LoadingStateManager()
     @Published var filters: PropertyFilters = PropertyFilters()
     @Published var favoritePropertyIds: Set<String> = []
     
@@ -43,41 +47,47 @@ class PropertyListViewModel: ObservableObject {
     
     /// Load properties with current filters
     func loadProperties() async {
-        isLoading = true
-        errorMessage = nil
-        error = nil
-        currentPage = 0
-        hasMorePages = true
-        
-        do {
-            // Fetch all properties (filtering happens client-side for now)
-            let allProperties = try await repository.fetchProperties(filters: nil)
+        await loadingStateManager.withLoading(
+            operation: LoadingStateManager.Operation.fetchProperties,
+            message: "Loading properties..."
+        ) {
+            isLoading = true
+            errorMessage = nil
+            error = nil
+            successMessage = nil
+            currentPage = 0
+            hasMorePages = true
             
-            // Filter to only show active listings for buyers
-            let activeProperties = allProperties.filter { $0.status == .active }
+            do {
+                // Fetch all properties (filtering happens client-side for now)
+                let allProperties = try await repository.fetchProperties(filters: nil)
+                
+                // Filter to only show active listings for buyers
+                let activeProperties = allProperties.filter { $0.status == .active }
+                
+                // Apply filters
+                let filteredProperties = try filterService.applyFilters(activeProperties, filters: filters)
+                
+                // Apply pagination
+                properties = Array(filteredProperties.prefix(pageSize))
+                hasMorePages = filteredProperties.count > pageSize
+                
+                // Load favorite status
+                await loadFavoriteStatus()
+                
+            } catch let appError as AppError {
+                error = appError
+                errorMessage = appError.userMessage
+                properties = []
+            } catch {
+                let appError = AppError.unknown(error.localizedDescription)
+                error = appError
+                errorMessage = appError.userMessage
+                properties = []
+            }
             
-            // Apply filters
-            let filteredProperties = try filterService.applyFilters(activeProperties, filters: filters)
-            
-            // Apply pagination
-            properties = Array(filteredProperties.prefix(pageSize))
-            hasMorePages = filteredProperties.count > pageSize
-            
-            // Load favorite status
-            await loadFavoriteStatus()
-            
-        } catch let appError as AppError {
-            error = appError
-            errorMessage = appError.userMessage
-            properties = []
-        } catch {
-            let appError = AppError.unknown(error.localizedDescription)
-            error = appError
-            errorMessage = appError.userMessage
-            properties = []
+            isLoading = false
         }
-        
-        isLoading = false
     }
     
     /// Retry loading properties
@@ -108,23 +118,33 @@ class PropertyListViewModel: ObservableObject {
             return
         }
         
-        do {
-            if favoritePropertyIds.contains(propertyId) {
-                // Remove from favorites
-                let favorites = try await favoritesRepository.fetchFavorites(userId: userId)
-                if let favorite = favorites.first(where: { $0.propertyId == propertyId }) {
-                    try await favoritesRepository.removeFavorite(id: favorite.id)
-                    favoritePropertyIds.remove(propertyId)
+        await loadingStateManager.withLoading(
+            operation: favoritePropertyIds.contains(propertyId) ? 
+                LoadingStateManager.Operation.removeFavorite : 
+                LoadingStateManager.Operation.addFavorite,
+            message: favoritePropertyIds.contains(propertyId) ? 
+                "Removing from favorites..." : 
+                "Adding to favorites..."
+        ) {
+            do {
+                if favoritePropertyIds.contains(propertyId) {
+                    // Remove from favorites
+                    let favorites = try await favoritesRepository.fetchFavorites(userId: userId)
+                    if let favorite = favorites.first(where: { $0.propertyId == propertyId }) {
+                        try await favoritesRepository.removeFavorite(id: favorite.id)
+                        favoritePropertyIds.remove(propertyId)
+                        successMessage = "Removed from favorites"
+                    }
+                } else {
+                    // Add to favorites
+                    let favorite = Favorite(userId: userId, propertyId: propertyId)
+                    try await favoritesRepository.addFavorite(favorite)
+                    favoritePropertyIds.insert(propertyId)
+                    successMessage = "Added to favorites"
                 }
-            } else {
-                // Add to favorites
-                let favorite = Favorite(userId: userId, propertyId: propertyId)
-                try await favoritesRepository.addFavorite(favorite)
-                favoritePropertyIds.insert(propertyId)
+            } catch {
+                errorMessage = "Failed to update favorite status."
             }
-        } catch {
-            // Silently fail or show error
-            errorMessage = "Failed to update favorite status."
         }
     }
     

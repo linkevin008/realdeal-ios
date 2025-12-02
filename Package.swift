@@ -26,12 +26,23 @@ let package = Package(
                 "README.md",
                 "Services/FilterService_README.md",
                 "Services/ExternalListingAPI_README.md",
+                "Services/AI_SERVICES_README.md",
                 "Utilities/CoreData/README.md",
-                "Utilities/CoreData/MIGRATION_STRATEGY.md"
+                "Utilities/CoreData/MIGRATION_STRATEGY.md",
+                "Utilities/IMAGE_HANDLING_README.md",
+                "Utilities/ERROR_HANDLING_README.md",
+                "Navigation/README.md"
             ],
             resources: [
                 .process("RealDeal.xcdatamodeld"),
                 .process("Assets.xcassets")
+            ],
+            linkerSettings: [
+                .linkedFramework("UIKit"),
+                .linkedFramework("SwiftUI"),
+                .linkedFramework("CoreData"),
+                .linkedFramework("MapKit"),
+                .linkedFramework("Combine")
             ]),
         .testTarget(
             name: "RealDealTests",

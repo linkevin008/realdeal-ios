@@ -13,12 +13,14 @@ struct ProfileView: View {
         ScrollView(.vertical, showsIndicators: true) {
             VStack(spacing: 24) {
                 if viewModel.isLoading {
-                    ProgressView()
-                        .padding()
+                    ProfileSkeleton()
+                        .fadeInOnAppear()
                 } else if let profile = viewModel.profile {
                     profileContent(profile)
+                        .fadeInOnAppear()
                 } else {
                     emptyState
+                        .fadeInOnAppear()
                 }
             }
             .padding()
@@ -162,13 +164,20 @@ struct ProfileView: View {
                 Button(role: .destructive) {
                     showDeleteConfirmation = true
                 } label: {
-                    Text("Delete Profile")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.red.opacity(0.1))
-                        .foregroundColor(.red)
-                        .cornerRadius(10)
+                    HStack {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .tint(.white)
+                        }
+                        Text("Delete Profile")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(viewModel.isLoading ? Color.gray.opacity(0.6) : Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
                 }
                 .disabled(viewModel.isLoading)
             }
@@ -181,8 +190,7 @@ struct ProfileView: View {
             AsyncImage(url: photoURL) { phase in
                 switch phase {
                 case .empty:
-                    ProgressView()
-                        .frame(width: 120, height: 120)
+                    SkeletonView(width: 120, height: 120, cornerRadius: 60)
                 case .success(let image):
                     image
                         .resizable()
@@ -251,21 +259,7 @@ struct ProfileView: View {
     }
     
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "person.crop.circle.badge.exclamationmark")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-            
-            Text("No Profile Found")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text("Unable to load profile information")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
+        EmptyStateView.profileNotFound()
     }
 }
 
