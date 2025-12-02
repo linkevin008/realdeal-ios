@@ -81,15 +81,19 @@ final class ImageHandlingTests: XCTestCase {
         await imageCache.store(image: image2, for: url2)
         
         // Verify both are cached
-        XCTAssertNotNil(await imageCache.image(for: url1))
-        XCTAssertNotNil(await imageCache.image(for: url2))
+        let cached1 = await imageCache.image(for: url1)
+        let cached2 = await imageCache.image(for: url2)
+        XCTAssertNotNil(cached1)
+        XCTAssertNotNil(cached2)
         
         // Clear all
         await imageCache.clearAll()
         
         // Verify both are removed
-        XCTAssertNil(await imageCache.image(for: url1))
-        XCTAssertNil(await imageCache.image(for: url2))
+        let cleared1 = await imageCache.image(for: url1)
+        let cleared2 = await imageCache.image(for: url2)
+        XCTAssertNil(cleared1)
+        XCTAssertNil(cleared2)
     }
     
     // MARK: - Image Compression Tests
@@ -259,7 +263,9 @@ final class ImageHandlingTests: XCTestCase {
         let loadedImage = await imageManager.loadImage(from: result.url)
         
         XCTAssertNotNil(loadedImage)
-        XCTAssertEqual(loadedImage?.size.width, testImage.size.width, accuracy: 1.0)
+        if let loadedImage = loadedImage {
+            XCTAssertEqual(loadedImage.size.width, testImage.size.width, accuracy: 1.0)
+        }
     }
     
     func testImageManagerPropertyImageProcessing() async throws {

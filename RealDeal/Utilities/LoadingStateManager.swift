@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 /// Centralized loading state management for the application
 @MainActor

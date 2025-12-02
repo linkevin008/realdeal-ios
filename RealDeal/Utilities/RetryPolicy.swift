@@ -102,7 +102,7 @@ actor RetryExecutor {
         }
         
         // All retries failed, throw the last error
-        throw lastError ?? AppError.unknown(NSError(domain: "RetryExecutor", code: -1))
+        throw lastError ?? AppError.unknown("All retry attempts failed")
     }
     
     /// Execute an operation with retry logic and a timeout

@@ -178,7 +178,9 @@ struct ProfileEditView: View {
             }
             #if os(iOS)
             .sheet(isPresented: $showImagePicker) {
-                ImagePicker(imageData: $viewModel.profilePhotoData)
+                // TODO: Implement profile photo picker
+                // EnhancedImagePicker expects UIImage array, needs adapter for Data
+                Text("Image picker temporarily unavailable")
             }
             #endif
         }

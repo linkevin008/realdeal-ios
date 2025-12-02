@@ -233,8 +233,9 @@ class MockContentGeneration: ContentGenerationProtocol {
     }
     
     private func generateInvestmentInfo(for property: Property) -> InvestmentAnalysis {
-        let estimatedRent = Double(truncating: property.price) * 0.008 // 0.8% of property value
-        let yieldPercentage = (estimatedRent * 12) / Double(truncating: property.price) * 100
+        let priceDouble = Double(truncating: property.price as NSDecimalNumber)
+        let estimatedRent = priceDouble * 0.008 // 0.8% of property value
+        let yieldPercentage = (estimatedRent * 12) / priceDouble * 100
         
         return InvestmentAnalysis(
             summary: "This property presents a solid investment opportunity with balanced risk and return potential. The location shows strong fundamentals with consistent demand and moderate appreciation trends.",

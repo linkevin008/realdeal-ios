@@ -161,7 +161,7 @@ struct ButtonPressAnimation: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scaleEffect(isPressed ? 0.95 : 1.0)
-            .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity) { _ in
+            .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity) {
                 // On press
                 withAnimation(AnimationUtilities.quickBounce) {
                     isPressed = true

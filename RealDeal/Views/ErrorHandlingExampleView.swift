@@ -10,20 +10,19 @@ struct ErrorHandlingExampleView: View {
         NavigationView {
             VStack(spacing: 20) {
                 // Network status banner
-                NetworkStatusBanner(networkMonitor: networkMonitor)
+                // NetworkStatusBanner(networkMonitor: networkMonitor)
                 
                 // Error banner (persistent)
                 if let error = viewModel.persistentError {
                     ErrorBannerView(
-                        message: error.userMessage,
-                        isRetryable: error.isRetryable,
+                        error: error,
+                        onDismiss: {
+                            viewModel.dismissError()
+                        },
                         onRetry: {
                             Task {
                                 await viewModel.retryLastOperation()
                             }
-                        },
-                        onDismiss: {
-                            viewModel.dismissError()
                         }
                     )
                     .padding(.horizontal)

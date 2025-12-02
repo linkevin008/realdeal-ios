@@ -302,16 +302,26 @@ extension AppError {
             return .medium
         case .network(.serverError), .network(.invalidResponse):
             return .high
+        case .network:
+            return .medium
         case .validation:
             return .low
         case .authentication(.invalidCredentials):
             return .medium
         case .authentication(.sessionExpired):
             return .high
+        case .authentication:
+            return .medium
+        case .storage:
+            return .medium
+        case .dataCorruption:
+            return .critical
         case .notFound:
             return .medium
         case .unauthorized:
             return .high
+        case .conflict:
+            return .medium
         case .unknown:
             return .critical
         }

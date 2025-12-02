@@ -134,11 +134,11 @@ struct MainTabView: View {
     @ViewBuilder
     private func destinationView(for destination: NavigationCoordinator.Destination) -> some View {
         switch destination {
-        case .propertyDetail(let propertyId):
+        case .propertyDetail(let property):
             PropertyDetailView(
                 viewModel: PropertyDetailViewModel(
-                    propertyId: propertyId,
-                    repository: propertyRepository,
+                    property: property,
+                    propertyRepository: propertyRepository,
                     userProfileRepository: userProfileRepository,
                     favoritesRepository: favoritesRepository,
                     currentUserId: currentUserId
@@ -153,23 +153,26 @@ struct MainTabView: View {
                 )
             )
             
-        case .propertyEdit(let propertyId):
+        case .propertyEdit(let property):
             PropertyCreationView(
                 viewModel: PropertyCreationViewModel(
                     service: propertyListingService,
                     currentUserId: currentUserId,
-                    editingPropertyId: propertyId
+                    property: property
                 )
             )
             
         case .profileView(let userId, let isOwnProfile):
             ProfileView(
                 viewModel: ProfileViewModel(
-                    repository: userProfileRepository,
-                    userId: userId
+                    repository: userProfileRepository
                 ),
                 isOwnProfile: isOwnProfile
             )
+            .task {
+                // Load the profile for the specified user
+                // Note: ProfileViewModel needs to be updated to support loading specific user profiles
+            }
             
         case .profileEdit:
             ProfileEditView(
@@ -179,16 +182,14 @@ struct MainTabView: View {
         case .login:
             LoginView(
                 viewModel: AuthViewModel(
-                    authService: MockAuthenticationService(),
-                    userProfileRepository: userProfileRepository
+                    authService: MockAuthenticationService()
                 )
             )
             
         case .registration:
             RegistrationView(
                 viewModel: AuthViewModel(
-                    authService: MockAuthenticationService(),
-                    userProfileRepository: userProfileRepository
+                    authService: MockAuthenticationService()
                 )
             )
         }

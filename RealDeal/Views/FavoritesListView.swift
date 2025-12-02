@@ -47,7 +47,7 @@ struct FavoritesListView: View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 ForEach(Array(viewModel.favoriteProperties.enumerated()), id: \.element.id) { index, property in
-                    NavigationLink(value: NavigationCoordinator.Destination.propertyDetail(propertyId: property.id)) {
+                    NavigationLink(value: NavigationCoordinator.Destination.propertyDetail(property: property)) {
                         PropertyCardView(
                             property: property,
                             isFavorite: true,

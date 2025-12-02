@@ -1,6 +1,6 @@
 import Foundation
 
-struct Property: Identifiable, Codable, Equatable {
+struct Property: Identifiable, Codable, Equatable, Hashable {
     let id: String
     var address: Address
     var price: Decimal
@@ -46,7 +46,7 @@ struct Property: Identifiable, Codable, Equatable {
     }
 }
 
-struct Address: Codable, Equatable {
+struct Address: Codable, Equatable, Hashable {
     var street: String
     var city: String
     var state: String
@@ -54,7 +54,7 @@ struct Address: Codable, Equatable {
     var country: String
 }
 
-struct PropertySpecifications: Codable, Equatable {
+struct PropertySpecifications: Codable, Equatable, Hashable {
     var bedrooms: Int?
     var bathrooms: Double?
     var squareFeet: Int?
@@ -62,7 +62,7 @@ struct PropertySpecifications: Codable, Equatable {
     var yearBuilt: Int?
 }
 
-struct PropertyImage: Codable, Equatable, Identifiable {
+struct PropertyImage: Codable, Equatable, Identifiable, Hashable {
     let id: String
     var url: URL
     var order: Int
@@ -74,7 +74,7 @@ struct PropertyImage: Codable, Equatable, Identifiable {
     }
 }
 
-struct Coordinate: Codable, Equatable {
+struct Coordinate: Codable, Equatable, Hashable {
     var latitude: Double
     var longitude: Double
 }

@@ -258,7 +258,7 @@ class ProfileViewModel: ObservableObject {
     /// Upload profile photo
     private func uploadProfilePhoto(_ imageData: Data, userId: String) async throws -> URL {
         guard let imageStorage = imageStorage else {
-            throw AppError.unknown(NSError(domain: "ProfileViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Image storage not configured"]))
+            throw AppError.unknown("Image storage not configured")
         }
         
         // Validate photo

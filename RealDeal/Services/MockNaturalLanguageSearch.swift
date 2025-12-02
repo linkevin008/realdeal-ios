@@ -113,7 +113,8 @@ class MockNaturalLanguageSearch: NaturalLanguageSearchProtocol {
         var primaryIntent: SearchIntent.Intent = .browse
         
         // Parse price information
-        if let priceRange = extractPriceRange(from: lowercaseQuery) {
+        let priceRange = extractPriceRange(from: lowercaseQuery)
+        if priceRange.min != nil || priceRange.max != nil {
             filters.priceMin = priceRange.min
             filters.priceMax = priceRange.max
             extractedKeywords.append("price")

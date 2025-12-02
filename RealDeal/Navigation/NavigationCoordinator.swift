@@ -50,9 +50,9 @@ class NavigationCoordinator: ObservableObject {
     // MARK: - Navigation Destinations
     
     enum Destination: Hashable {
-        case propertyDetail(propertyId: String)
+        case propertyDetail(property: Property)
         case propertyCreation
-        case propertyEdit(propertyId: String)
+        case propertyEdit(property: Property)
         case profileView(userId: String, isOwnProfile: Bool)
         case profileEdit
         case login
@@ -62,8 +62,8 @@ class NavigationCoordinator: ObservableObject {
     // MARK: - Navigation Methods
     
     /// Navigate to a property detail view from any tab
-    func navigateToPropertyDetail(propertyId: String, from tab: AppTab? = nil) {
-        let destination = Destination.propertyDetail(propertyId: propertyId)
+    func navigateToPropertyDetail(property: Property, from tab: AppTab? = nil) {
+        let destination = Destination.propertyDetail(property: property)
         
         if let tab = tab {
             selectedTab = tab
@@ -90,9 +90,9 @@ class NavigationCoordinator: ObservableObject {
     }
     
     /// Navigate to property edit
-    func navigateToPropertyEdit(propertyId: String) {
+    func navigateToPropertyEdit(property: Property) {
         selectedTab = .myListings
-        myListingsNavigationPath.append(Destination.propertyEdit(propertyId: propertyId))
+        myListingsNavigationPath.append(Destination.propertyEdit(property: property))
     }
     
     /// Navigate to a user profile
@@ -149,31 +149,10 @@ class NavigationCoordinator: ObservableObject {
     }
     
     /// Handle deep link URL
+    /// TODO: Implement deep linking with property fetching
     func handleDeepLink(url: URL) {
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
-            return
-        }
-        
-        // Expected format: realdeal://property/{propertyId}
-        // or realdeal://profile/{userId}
-        
-        let pathComponents = components.path.split(separator: "/")
-        
-        guard pathComponents.count >= 2 else {
-            return
-        }
-        
-        let type = String(pathComponents[0])
-        let id = String(pathComponents[1])
-        
-        switch type {
-        case "property":
-            navigateToPropertyDetail(propertyId: id, from: .browse)
-        case "profile":
-            let isOwnProfile = components.queryItems?.first(where: { $0.name == "own" })?.value == "true"
-            navigateToProfile(userId: id, isOwnProfile: isOwnProfile)
-        default:
-            break
-        }
+        // Deep linking temporarily disabled - needs to fetch Property object by ID
+        // before navigating to detail view
+        return
     }
 }

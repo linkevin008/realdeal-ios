@@ -76,12 +76,12 @@ class PropertyListViewModel: ObservableObject {
                 await loadFavoriteStatus()
                 
             } catch let appError as AppError {
-                error = appError
+                self.error = appError
                 errorMessage = appError.userMessage
                 properties = []
-            } catch {
-                let appError = AppError.unknown(error.localizedDescription)
-                error = appError
+            } catch let caughtError {
+                let appError = AppError.unknown(caughtError.localizedDescription)
+                self.error = appError
                 errorMessage = appError.userMessage
                 properties = []
             }
