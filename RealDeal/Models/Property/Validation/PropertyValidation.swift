@@ -3,7 +3,6 @@ import Foundation
 // MARK: - Property Validation
 
 extension Property {
-    /// Validates the property data according to requirements 1.1, 1.3, 1.5
     func validate() throws {
         // Validate address
         try address.validate()

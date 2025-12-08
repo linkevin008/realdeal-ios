@@ -30,5 +30,3 @@ class PropertyAnnotation: NSObject, MKAnnotation {
         super.init()
     }
 }
-
-

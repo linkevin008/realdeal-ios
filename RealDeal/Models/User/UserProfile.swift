@@ -31,11 +31,7 @@ struct UserProfile: Identifiable, Codable, Equatable {
     }
 }
 
-enum UserRole: String, Codable {
-    case buyer
-    case seller
-    case both
-}
+
 
 struct ProfileVisibility: Codable, Equatable {
     var showEmail: Bool
