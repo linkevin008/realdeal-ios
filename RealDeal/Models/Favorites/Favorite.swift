@@ -6,12 +6,7 @@ struct Favorite: Identifiable, Codable, Equatable {
     let propertyId: String
     let savedAt: Date
     
-    init(
-        id: String = UUID().uuidString,
-        userId: String,
-        propertyId: String,
-        savedAt: Date = Date()
-    ) {
+    init(id: String = UUID().uuidString, userId: String, propertyId: String, savedAt: Date = Date()) {
         self.id = id
         self.userId = userId
         self.propertyId = propertyId

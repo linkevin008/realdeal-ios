@@ -1,8 +1,7 @@
 import Foundation
 import MapKit
 
-/// Custom annotation for displaying properties on the map
-@available(iOS 15.0, macOS 12.0, *)
+@available(iOS 16.0, macOS 12.0, *)
 class PropertyAnnotation: NSObject, MKAnnotation {
     let property: Property
     

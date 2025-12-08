@@ -50,7 +50,8 @@ struct Address: Codable, Equatable, Hashable {
     var street: String
     var city: String
     var state: String
-    var zipCode: String
+    var zipCode: String?
+    var postalCode: String?
     var country: String
 }
 
@@ -77,27 +78,4 @@ struct PropertyImage: Codable, Equatable, Identifiable, Hashable {
 struct Coordinate: Codable, Equatable, Hashable {
     var latitude: Double
     var longitude: Double
-}
-
-enum PropertyType: String, Codable, CaseIterable {
-    case house
-    case apartment
-    case condo
-    case land
-    case commercial
-}
-
-enum ListingSource: String, Codable {
-    case userGenerated
-    case mls
-    case zillow
-    case realtor
-    case other
-}
-
-enum PropertyStatus: String, Codable {
-    case active
-    case pending
-    case sold
-    case deleted
 }

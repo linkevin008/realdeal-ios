@@ -3,46 +3,57 @@ import Foundation
 // MARK: - PropertyFilters Validation
 
 extension PropertyFilters {
-    /// Validates the property filters data
     func validate() throws {
-        // Validate price range if both min and max are set
+        try validatePriceRange()
+        try validateNonZeroPriceRange()
+        try validateMinBedrooms()
+        try validateNonZeroBathrooms()
+        try validateSearchRadius()
+    }
+    
+    func validatePriceRange() throws {
+        // If both min and max are set, validate 0 < min <= max
         if let min = priceMin, let max = priceMax {
             guard min <= max else {
                 throw ValidationError.invalidPriceRange
             }
-            guard min >= 0 else {
+            guard min > 0 else {
                 throw ValidationError.invalidPriceRange
             }
         }
-        
-        // Validate individual price values
+    }
+    
+    func validateNonZeroPriceRange() throws {
         if let min = priceMin {
-            guard min >= 0 else {
+            guard min > 0 else {
                 throw ValidationError.invalidPriceRange
             }
         }
         
         if let max = priceMax {
-            guard max >= 0 else {
+            guard max > 0 else {
                 throw ValidationError.invalidPriceRange
             }
         }
-        
-        // Validate minimum bedrooms
+    }
+    
+    func validateMinBedrooms() throws {
         if let minBedrooms = minBedrooms {
             guard minBedrooms >= 0 else {
                 throw ValidationError.invalidFormat("minBedrooms")
             }
         }
-        
-        // Validate minimum bathrooms
+    }
+    
+    func validateNonZeroBathrooms() throws {
         if let minBathrooms = minBathrooms {
-            guard minBathrooms >= 0 else {
+            guard minBathrooms > 0 else {
                 throw ValidationError.invalidFormat("minBathrooms")
             }
         }
-        
-        // Validate location radius if present
+    }
+    
+    func validateSearchRadius() throws {
         if let locationRadius = locationRadius {
             try locationRadius.validate()
         }
@@ -51,15 +62,18 @@ extension PropertyFilters {
 
 extension LocationRadius {
     func validate() throws {
-        // Validate center coordinates
         try center.validate()
-        
-        // Validate radius (must be positive)
+        try validateNonZeroRadius()
+        try validateRadiusLimit()
+    }
+    
+    func validateNonZeroRadius() throws {
         guard radiusInMiles > 0 else {
             throw ValidationError.invalidLocation
         }
-        
-        // Reasonable upper limit for radius (e.g., 1000 miles)
+    }
+    
+    func validateRadiusLimit() throws {
         guard radiusInMiles <= 1000 else {
             throw ValidationError.invalidLocation
         }
