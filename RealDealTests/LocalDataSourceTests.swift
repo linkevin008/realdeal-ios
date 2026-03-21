@@ -32,6 +32,7 @@ final class LocalDataSourceTests: XCTestCase {
                 country: "Canada"
             ),
             price: 1000000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful house",
             location: Coordinate(latitude: 43.6532, longitude: -79.3832)
@@ -56,14 +57,16 @@ final class LocalDataSourceTests: XCTestCase {
         let property1 = Property(
             address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "House 1",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
         )
-        
+
         let property2 = Property(
             address: Address(street: "456 Oak Ave", city: "Toronto", province: "ON", postalCode: "M4Y 1X7", country: "Canada"),
             price: 1500000,
+            currency: "CAD",
             propertyType: .apartment,
             description: "Apartment 1",
             location: Coordinate(latitude: 37.7849, longitude: -122.4094)
@@ -84,6 +87,7 @@ final class LocalDataSourceTests: XCTestCase {
         let property = Property(
             address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 1000000,
+            currency: "CAD",
             propertyType: .house,
             description: "Test house",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)

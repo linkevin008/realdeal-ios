@@ -259,6 +259,7 @@ final class SellerListingManagementTests: XCTestCase {
                 country: "Canada"
             ),
             price: Decimal(500000),
+            currency: "CAD",
             propertyType: .house,
             description: "Test property",
             specifications: PropertySpecifications(

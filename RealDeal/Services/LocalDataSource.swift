@@ -338,6 +338,7 @@ class LocalDataSource: LocalDataSourceProtocol {
             id: entity.id,
             address: address,
             price: entity.price as Decimal,
+            currency: entity.currency.isEmpty ? "CAD" : entity.currency,
             propertyType: propertyType,
             description: entity.propertyDescription,
             specifications: specifications,
@@ -358,6 +359,7 @@ class LocalDataSource: LocalDataSourceProtocol {
         entity.addressPostalCode = property.address.postalCode
         entity.addressCountry = property.address.country
         entity.price = property.price as NSDecimalNumber
+        entity.currency = property.currency
         entity.propertyType = property.propertyType.rawValue
         entity.propertyDescription = property.description
         entity.specBedrooms = Int32(property.specifications.bedrooms ?? 0)

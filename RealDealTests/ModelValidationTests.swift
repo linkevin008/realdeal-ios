@@ -15,11 +15,12 @@ final class ModelValidationTests: XCTestCase {
                 country: "Canada"
             ),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful home",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
         )
-        
+
         XCTAssertNoThrow(try property.validate())
     }
     
@@ -33,6 +34,7 @@ final class ModelValidationTests: XCTestCase {
                 country: "Canada"
             ),
             price: -100,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful home",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
@@ -51,6 +53,7 @@ final class ModelValidationTests: XCTestCase {
                 country: "Canada"
             ),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "   ",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
@@ -69,6 +72,7 @@ final class ModelValidationTests: XCTestCase {
                 country: "USA"
             ),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful home",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
@@ -87,6 +91,7 @@ final class ModelValidationTests: XCTestCase {
                 country: "Canada"
             ),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful home",
             location: Coordinate(latitude: 200, longitude: -122.4194)

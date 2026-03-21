@@ -86,6 +86,25 @@ struct ProfileEditView: View {
                     Text("Basic Information")
                 }
                 
+                // Display Currency Section
+                Section {
+                    Picker("Display Currency", selection: Binding(
+                        get: { DisplayCurrencyPreference.shared.displayCurrency },
+                        set: { DisplayCurrencyPreference.shared.displayCurrency = $0 }
+                    )) {
+                        ForEach(CurrencyFormatter.supported, id: \.self) { code in
+                            Text(code).tag(code)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .disabled(viewModel.isLoading)
+                } header: {
+                    Text("Display Currency")
+                } footer: {
+                    Text("Prices will be shown in this currency")
+                        .font(.caption)
+                }
+
                 // Privacy Settings Section
                 Section {
                     Toggle("Show email to others", isOn: $viewModel.editShowEmail)

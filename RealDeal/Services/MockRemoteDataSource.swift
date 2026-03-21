@@ -117,6 +117,7 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
                 id: UUID().uuidString,
                 address: property.address,
                 price: property.price,
+                currency: property.currency,
                 propertyType: property.propertyType,
                 description: property.description,
                 specifications: property.specifications,

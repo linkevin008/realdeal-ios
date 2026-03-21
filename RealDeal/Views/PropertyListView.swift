@@ -180,7 +180,11 @@ struct PropertyCardView: View {
             // Property details
             VStack(alignment: .leading, spacing: 8) {
                 // Price
-                Text(formatPrice(property.price))
+                Text(CurrencyFormatter.format(
+                    property.price,
+                    storageCurrency: property.currency,
+                    displayCurrency: DisplayCurrencyPreference.shared.displayCurrency
+                ))
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
@@ -231,12 +235,4 @@ struct PropertyCardView: View {
         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
     
-    private func formatPrice(_ price: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "CAD"
-        formatter.locale = Locale(identifier: "en_CA")
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: price as NSDecimalNumber) ?? "$0"
-    }
 }

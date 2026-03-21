@@ -138,12 +138,11 @@ class PropertyDetailViewModel: ObservableObject {
     
     /// Formatted price string
     var formattedPrice: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "CAD"
-        formatter.locale = Locale(identifier: "en_CA")
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: property.price as NSDecimalNumber) ?? "$0"
+        CurrencyFormatter.format(
+            property.price,
+            storageCurrency: property.currency,
+            displayCurrency: DisplayCurrencyPreference.shared.displayCurrency
+        )
     }
 
     /// Formatted address string

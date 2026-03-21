@@ -189,11 +189,6 @@ struct PropertyFiltersView: View {
     }
     
     private func formatPrice(_ price: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "CAD"
-        formatter.locale = Locale(identifier: "en_CA")
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: price as NSDecimalNumber) ?? "$0"
+        CurrencyFormatter.format(price, currency: "CAD")
     }
 }

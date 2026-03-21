@@ -92,7 +92,7 @@ struct DeepLinkHelper {
         \(property.address.street)
         \(property.address.city), \(property.address.province) \(property.address.postalCode)
         
-        Price: \(formatPrice(property.price))
+        Price: \(CurrencyFormatter.format(property.price, currency: property.currency))
         """
         
         if includeURL, let url = propertyDetailURL(propertyId: property.id) {
@@ -102,14 +102,4 @@ struct DeepLinkHelper {
         return text
     }
     
-    // MARK: - Private Helpers
-    
-    private static func formatPrice(_ price: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "CAD"
-        formatter.locale = Locale(identifier: "en_CA")
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: price as NSDecimalNumber) ?? "$0"
-    }
 }

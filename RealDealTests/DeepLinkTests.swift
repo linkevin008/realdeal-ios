@@ -185,6 +185,7 @@ final class DeepLinkTests: XCTestCase {
                 country: "Canada"
             ),
             price: 899_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Test property",
             location: Coordinate(latitude: 43.6479, longitude: -79.3733)
@@ -210,6 +211,7 @@ final class DeepLinkTests: XCTestCase {
                 country: "Canada"
             ),
             price: 2_595_000,
+            currency: "CAD",
             propertyType: .house,
             description: "Test property",
             location: Coordinate(latitude: 43.6888, longitude: -79.4031)
@@ -237,6 +239,7 @@ final class DeepLinkTests: XCTestCase {
                 country: "Canada"
             ),
             price: 1_098_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Test property",
             location: Coordinate(latitude: 49.2731, longitude: -123.1269)

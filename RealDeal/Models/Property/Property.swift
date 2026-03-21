@@ -4,6 +4,7 @@ struct Property: Identifiable, Codable, Equatable, Hashable {
     let id: String
     var address: Address
     var price: Decimal
+    var currency: String
     var propertyType: PropertyType
     var description: String
     var specifications: PropertySpecifications
@@ -14,11 +15,12 @@ struct Property: Identifiable, Codable, Equatable, Hashable {
     var status: PropertyStatus
     var createdAt: Date
     var updatedAt: Date
-    
+
     init(
         id: String = UUID().uuidString,
         address: Address,
         price: Decimal,
+        currency: String = "CAD",
         propertyType: PropertyType,
         description: String,
         specifications: PropertySpecifications = PropertySpecifications(),
@@ -33,6 +35,7 @@ struct Property: Identifiable, Codable, Equatable, Hashable {
         self.id = id
         self.address = address
         self.price = price
+        self.currency = currency
         self.propertyType = propertyType
         self.description = description
         self.specifications = specifications

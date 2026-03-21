@@ -20,6 +20,7 @@
         <attribute name="longitude" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="source" attributeType="String"/>
         <attribute name="sellerId" optional="YES" attributeType="String"/>
+        <attribute name="currency" attributeType="String"/>
         <attribute name="status" attributeType="String"/>
         <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>

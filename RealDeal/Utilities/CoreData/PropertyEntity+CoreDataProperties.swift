@@ -24,6 +24,7 @@ extension PropertyEntity {
     @NSManaged public var imagesData: Data?
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double
+    @NSManaged public var currency: String
     @NSManaged public var source: String
     @NSManaged public var sellerId: String?
     @NSManaged public var status: String

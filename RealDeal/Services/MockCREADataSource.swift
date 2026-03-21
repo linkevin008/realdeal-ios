@@ -103,6 +103,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 899_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Stunning 2-bedroom corner unit on the 32nd floor of 88 Scott. Floor-to-ceiling windows with panoramic views of Lake Ontario and the Financial District. Modern kitchen with integrated appliances, spa-inspired ensuite, and private balcony.",
             specifications: PropertySpecifications(
@@ -131,6 +132,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 1_249_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Luxurious 2-bedroom + den condo in the heart of Yorkville. Designer finishes throughout, chef's kitchen with quartz countertops, and a wraparound terrace offering unobstructed city views. Steps to world-class dining and boutiques.",
             specifications: PropertySpecifications(
@@ -160,6 +162,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 2_595_000,
+            currency: "CAD",
             propertyType: .house,
             description: "Elegant four-bedroom detached home on a coveted street in Forest Hill. Fully renovated top-to-bottom with a gourmet kitchen, primary suite with spa bath, professionally landscaped gardens, and a legal lower suite.",
             specifications: PropertySpecifications(
@@ -189,6 +192,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 1_098_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Sophisticated 2-bedroom residence in Yaletown's Executive on the Park. Open-concept living with hardwood floors, gourmet kitchen, in-suite laundry, and a generous balcony overlooking Marinaside Crescent. Steps to seawall.",
             specifications: PropertySpecifications(
@@ -218,6 +222,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 2_888_000,
+            currency: "CAD",
             propertyType: .house,
             description: "Custom-built craftsman home in Dunbar. Five bedrooms, four bathrooms, open-plan main floor with high ceilings, south-facing yard, double garage, and a fully finished basement suite. Top-ranked school catchment.",
             specifications: PropertySpecifications(
@@ -247,6 +252,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 899_000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautifully updated 4-bedroom family home in the established community of Pump Hill. Vaulted ceilings, quartz kitchen, hardwood throughout, heated triple garage, and a private south-facing backyard with in-ground pool.",
             specifications: PropertySpecifications(
@@ -275,6 +281,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 529_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Contemporary 2-bedroom, 2-bathroom condo in Bridgeland with river valley views. Polished concrete floors, custom millwork, stainless appliances, two underground parking stalls, and a large private patio.",
             specifications: PropertySpecifications(
@@ -304,6 +311,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 749_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Chic loft-style condo in Westmount, steps from Sherbrooke Street galleries and boutiques. Exposed brick, 11-foot ceilings, industrial kitchen, private rooftop terrace, and one indoor garage space.",
             specifications: PropertySpecifications(
@@ -332,6 +340,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 1_175_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Magnificent Old Montreal loft in a heritage building dating to 1871. Three bedrooms, two full baths, original stone walls, 14-foot brick-arched ceilings, chef's kitchen, and private courtyard access. Rare offering.",
             specifications: PropertySpecifications(
@@ -361,6 +370,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 1_050_000,
+            currency: "CAD",
             propertyType: .house,
             description: "Charming Victorian semi-detached in the Glebe, one of Ottawa's most walkable neighbourhoods. Three bedrooms, updated kitchen and baths, private fenced backyard with deck, original hardwood floors throughout, and an attached garage.",
             specifications: PropertySpecifications(
@@ -389,6 +399,7 @@ class MockCREADataSource: CREADataSourceProtocol {
                 country: "Canada"
             ),
             price: 579_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Modern 2-bedroom condo in Centretown within walking distance of Parliament Hill and the Byward Market. Floor-to-ceiling windows, open kitchen with island, in-suite laundry, and a south-facing balcony.",
             specifications: PropertySpecifications(

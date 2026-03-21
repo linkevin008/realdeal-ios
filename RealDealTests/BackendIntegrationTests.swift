@@ -31,11 +31,12 @@ final class BackendIntegrationTests: XCTestCase {
         let property = Property(
             address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful house",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
         )
-        
+
         let createdProperty = try await mockDataSource.createProperty(property)
         XCTAssertFalse(createdProperty.id.isEmpty)
         
@@ -50,11 +51,12 @@ final class BackendIntegrationTests: XCTestCase {
         var property = Property(
             address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful house",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
         )
-        
+
         property = try await mockDataSource.createProperty(property)
         
         var updatedProperty = property
@@ -71,11 +73,12 @@ final class BackendIntegrationTests: XCTestCase {
         let property = Property(
             address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 500000,
+            currency: "CAD",
             propertyType: .house,
             description: "Beautiful house",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
         )
-        
+
         let createdProperty = try await mockDataSource.createProperty(property)
         try await mockDataSource.deleteProperty(id: createdProperty.id)
         
@@ -89,14 +92,16 @@ final class BackendIntegrationTests: XCTestCase {
         let property1 = Property(
             address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 300000,
+            currency: "CAD",
             propertyType: .house,
             description: "Affordable house",
             location: Coordinate(latitude: 37.7749, longitude: -122.4194)
         )
-        
+
         let property2 = Property(
             address: Address(street: "456 Oak Ave", city: "Toronto", province: "ON", postalCode: "M4Y 1X7", country: "Canada"),
             price: 700000,
+            currency: "CAD",
             propertyType: .house,
             description: "Expensive house",
             location: Coordinate(latitude: 37.7849, longitude: -122.4094)
@@ -496,6 +501,7 @@ final class BackendIntegrationTests: XCTestCase {
             id: "user-1",
             address: Address(street: "100 User St", city: "Ottawa", province: "ON", postalCode: "K1A 0A6", country: "Canada"),
             price: 400000,
+            currency: "CAD",
             propertyType: .house,
             description: "User-generated listing",
             location: Coordinate(latitude: 45.5152, longitude: -122.6784),
@@ -550,6 +556,7 @@ final class BackendIntegrationTests: XCTestCase {
             id: "user-conflict",
             address: sharedAddress,
             price: 1300000,
+            currency: "CAD",
             propertyType: .house,
             description: "User-generated version",
             location: sharedLocation,
@@ -589,6 +596,7 @@ final class BackendIntegrationTests: XCTestCase {
         let localProperty = Property(
             address: Address(street: "200 Local St", city: "Vancouver", province: "BC", postalCode: "V6B 2B5", country: "Canada"),
             price: 600000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Local listing",
             location: Coordinate(latitude: 47.6062, longitude: -122.3321)
@@ -700,6 +708,7 @@ final class BackendIntegrationTests: XCTestCase {
                 country: "Canada"
             ),
             price: 750_000,
+            currency: "CAD",
             propertyType: .house,
             description: "Fallback property from remote",
             location: Coordinate(latitude: 45.4215, longitude: -75.6972),
@@ -744,6 +753,7 @@ final class BackendIntegrationTests: XCTestCase {
                 country: "Canada"
             ),
             price: 850_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Remote-only listing",
             location: Coordinate(latitude: 49.2827, longitude: -123.1207)
@@ -861,6 +871,7 @@ final class BackendIntegrationTests: XCTestCase {
                 country: "Canada"
             ),
             price: 620_000,
+            currency: "CAD",
             propertyType: .house,
             description: "Property to verify cache after CREA fallback",
             location: Coordinate(latitude: 51.0447, longitude: -114.0719)
@@ -1053,6 +1064,7 @@ final class BackendIntegrationTests: XCTestCase {
                 country: "Canada"
             ),
             price: 500_000,
+            currency: "CAD",
             propertyType: .condo,
             description: "Cached property",
             location: Coordinate(latitude: 45.5017, longitude: -73.5673),
@@ -1113,6 +1125,7 @@ final class BackendIntegrationTests: XCTestCase {
             id: "user-custom",
             address: sharedAddress,
             price: 1300000,
+            currency: "CAD",
             propertyType: .house,
             description: "User version",
             location: sharedLocation,

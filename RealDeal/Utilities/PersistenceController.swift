@@ -213,6 +213,12 @@ struct PersistenceController {
         sellerIdAttr.isOptional = true
         propertyAttributes.append(sellerIdAttr)
         
+        let currencyAttr = NSAttributeDescription()
+        currencyAttr.name = "currency"
+        currencyAttr.attributeType = .stringAttributeType
+        currencyAttr.isOptional = false
+        propertyAttributes.append(currencyAttr)
+
         let statusAttr = NSAttributeDescription()
         statusAttr.name = "status"
         statusAttr.attributeType = .stringAttributeType
