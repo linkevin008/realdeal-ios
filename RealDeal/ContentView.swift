@@ -1,6 +1,6 @@
 import SwiftUI
 
-@available(iOS 17.0, macOS 12.0, *)
+@available(iOS 17.0, *)
 struct ContentView: View {
     // MARK: - Data layer (shared across the app)
     private let localDataSource: LocalDataSource
@@ -40,7 +40,6 @@ struct ContentView: View {
     }
 
     var body: some View {
-        #if os(iOS)
         MainTabView(
             authViewModel: authViewModel,
             propertyRepository: propertyRepository,
@@ -48,14 +47,9 @@ struct ContentView: View {
             favoritesRepository: favoritesRepository,
             propertyListingService: propertyListingService
         )
-        #else
-        Text("RealDeal — macOS version coming soon")
-            .padding()
-        #endif
     }
 }
 
-@available(iOS 17.0, macOS 12.0, *)
 #Preview {
     ContentView()
         .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)

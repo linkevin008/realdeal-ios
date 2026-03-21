@@ -1,11 +1,14 @@
 import SwiftUI
+import CoreLocation
 
 /// Filter UI for property search
-@available(iOS 15.0, macOS 12.0, *)
+@available(iOS 15.0, *)
 struct PropertyFiltersView: View {
     @ObservedObject var viewModel: PropertyListViewModel
     @Environment(\.dismiss) private var dismiss
-    
+
+    @StateObject private var locationManager = LocationManager()
+
     // Local state for filter controls
     @State private var minPrice: Double = 0
     @State private var maxPrice: Double = 5_000_000
@@ -14,14 +17,12 @@ struct PropertyFiltersView: View {
     @State private var useLocationFilter: Bool = false
     @State private var minBedrooms: Int = 0
     @State private var minBathrooms: Double = 0
-    
+
     var body: some View {
         NavigationView {
             Form {
                 // Price Range Section
                 Section(header: Text("Price Range")) {
-                    let priceFormatter = NumberFormatter()
-                    
                     LabeledSlider(
                         label: "Minimum Price",
                         range: 0...5_000_000,
@@ -34,7 +35,7 @@ struct PropertyFiltersView: View {
                             return formatter
                         }()
                     )
-                    
+
                     LabeledSlider(
                         label: "Maximum Price",
                         range: 0...5_000_000,
@@ -48,7 +49,7 @@ struct PropertyFiltersView: View {
                         }()
                     )
                 }
-                
+
                 // Property Type Section
                 Section(header: Text("Property Type")) {
                     CheckboxGroup(
@@ -56,7 +57,7 @@ struct PropertyFiltersView: View {
                         selection: $selectedTypes
                     )
                 }
-                
+
                 // Location Section
                 Section(header: Text("Location")) {
                     RealDealToggle(
@@ -64,8 +65,24 @@ struct PropertyFiltersView: View {
                         description: "Use your current location to filter nearby properties",
                         isOn: $useLocationFilter
                     )
-                    
+                    .onChange(of: useLocationFilter) { _, enabled in
+                        if enabled {
+                            locationManager.requestLocationPermission()
+                            locationManager.startUpdatingLocation()
+                        }
+                    }
+
                     if useLocationFilter {
+                        if let errorMessage = locationManager.errorMessage {
+                            Text(errorMessage)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        } else if locationManager.currentLocation == nil {
+                            Text("Waiting for location…")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
                         LabeledSlider(
                             label: "Search Radius",
                             range: 1...100,
@@ -80,17 +97,17 @@ struct PropertyFiltersView: View {
                         )
                     }
                 }
-                
+
                 // Specifications Section
                 Section(header: Text("Specifications")) {
                     Stepper("Min Bedrooms: \(minBedrooms)", value: $minBedrooms, in: 0...10)
-                    
-                    Stepper("Min Bathrooms: \(String(format: "%.1f", minBathrooms))", 
-                            value: $minBathrooms, 
-                            in: 0...10, 
+
+                    Stepper("Min Bathrooms: \(String(format: "%.1f", minBathrooms))",
+                            value: $minBathrooms,
+                            in: 0...10,
                             step: 0.5)
                 }
-                
+
                 // Action Buttons
                 Section {
                     Button(action: applyFilters) {
@@ -98,7 +115,7 @@ struct PropertyFiltersView: View {
                             .fontWeight(.semibold)
                     }
                     .primaryButtonStyle(isLoading: viewModel.isLoading)
-                    
+
                     Button(action: clearFilters) {
                         Text("Clear All Filters")
                     }
@@ -118,11 +135,10 @@ struct PropertyFiltersView: View {
             }
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func loadCurrentFilters() {
-        // Load current filter values from view model
         if let min = viewModel.filters.priceMin {
             minPrice = Double(truncating: min as NSDecimalNumber)
         }
@@ -143,36 +159,35 @@ struct PropertyFiltersView: View {
             minBathrooms = baths
         }
     }
-    
+
     private func applyFilters() {
-        // Update view model filters
         viewModel.updatePriceRange(
             min: minPrice > 0 ? Decimal(minPrice) : nil,
             max: maxPrice < 5_000_000 ? Decimal(maxPrice) : nil
         )
-        
+
         viewModel.updatePropertyTypes(selectedTypes)
-        
-        if useLocationFilter {
-            // TODO: replace with the user's actual device location
-            let defaultCenter = Coordinate(latitude: 49.2827, longitude: -123.1207) // Vancouver
-            viewModel.updateLocationRadius(center: defaultCenter, radiusInMiles: locationRadius)
+
+        if useLocationFilter, let clLocation = locationManager.currentLocation {
+            let center = Coordinate(
+                latitude: clLocation.coordinate.latitude,
+                longitude: clLocation.coordinate.longitude
+            )
+            viewModel.updateLocationRadius(center: center, radiusInMiles: locationRadius)
         } else {
             viewModel.updateLocationRadius(center: nil, radiusInMiles: nil)
         }
-        
+
         viewModel.filters.minBedrooms = minBedrooms > 0 ? minBedrooms : nil
         viewModel.filters.minBathrooms = minBathrooms > 0 ? minBathrooms : nil
-        
-        // Apply filters
+
         Task {
             await viewModel.applyFilters()
             dismiss()
         }
     }
-    
+
     private func clearFilters() {
-        // Reset all filter values
         minPrice = 0
         maxPrice = 5_000_000
         selectedTypes = []
@@ -180,15 +195,10 @@ struct PropertyFiltersView: View {
         useLocationFilter = false
         minBedrooms = 0
         minBathrooms = 0
-        
-        // Clear filters in view model
+
         Task {
             await viewModel.clearFilters()
             dismiss()
         }
-    }
-    
-    private func formatPrice(_ price: Decimal) -> String {
-        CurrencyFormatter.format(price, currency: "CAD")
     }
 }
