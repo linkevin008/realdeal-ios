@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 /// View for creating and editing user profiles
 @available(iOS 15.0, macOS 12.0, *)
@@ -7,6 +8,7 @@ struct ProfileEditView: View {
     @Environment(\.presentationMode) var presentationMode
     
     @State private var showImagePicker = false
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
     
     var isCreating: Bool {
         viewModel.profile == nil
@@ -75,9 +77,9 @@ struct ProfileEditView: View {
                     
                     // Role Picker
                     Picker("Role", selection: $viewModel.editRole) {
-                        Text("Buyer").tag(UserRole.buyer)
-                        Text("Seller").tag(UserRole.seller)
-                        Text("Both").tag(UserRole.both)
+                        ForEach(UserRole.allCases, id: \.self) { role in
+                            Text(role.displayName).tag(role)
+                        }
                     }
                     .disabled(viewModel.isLoading)
                 } header: {
@@ -177,10 +179,19 @@ struct ProfileEditView: View {
                 #endif
             }
             #if os(iOS)
-            .sheet(isPresented: $showImagePicker) {
-                // TODO: Implement profile photo picker
-                // EnhancedImagePicker expects UIImage array, needs adapter for Data
-                Text("Image picker temporarily unavailable")
+            .photosPicker(
+                isPresented: $showImagePicker,
+                selection: $selectedPhotoItem,
+                matching: .images
+            )
+            .onChange(of: selectedPhotoItem) { _, newItem in
+                guard let newItem else { return }
+                Task {
+                    if let data = try? await newItem.loadTransferable(type: Data.self) {
+                        viewModel.setProfilePhoto(data)
+                    }
+                    selectedPhotoItem = nil
+                }
             }
             #endif
         }
@@ -295,7 +306,7 @@ struct ProfileEditView_Previews: PreviewProvider {
             name: "John Doe",
             email: "john@example.com",
             phoneNumber: "+1234567890",
-            role: .seller,
+            role: .agent,
             visibilitySettings: ProfileVisibility(showEmail: true, showPhone: true, showListings: true)
         )
         
@@ -303,7 +314,7 @@ struct ProfileEditView_Previews: PreviewProvider {
         viewModel.editName = "John Doe"
         viewModel.editEmail = "john@example.com"
         viewModel.editPhoneNumber = "+1234567890"
-        viewModel.editRole = .seller
+        viewModel.editRole = .agent
         
         return ProfileEditView(viewModel: viewModel)
     }

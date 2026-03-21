@@ -96,7 +96,7 @@ class LocalDataSource: LocalDataSourceProtocol {
             // Apply location radius filter with precise distance calculation
             if let locationRadius = filters?.locationRadius {
                 properties = properties.filter { property in
-                    let distance = self.calculateDistance(
+                    let distance = GeoUtils.distance(
                         from: locationRadius.center,
                         to: property.location
                     )
@@ -305,8 +305,8 @@ class LocalDataSource: LocalDataSourceProtocol {
         let address = Address(
             street: entity.addressStreet,
             city: entity.addressCity,
-            state: entity.addressState,
-            zipCode: entity.addressZipCode,
+            province: entity.addressProvince,
+            postalCode: entity.addressPostalCode,
             country: entity.addressCountry
         )
         
@@ -354,8 +354,8 @@ class LocalDataSource: LocalDataSourceProtocol {
     private func mapToEntity(property: Property, entity: PropertyEntity) {
         entity.addressStreet = property.address.street
         entity.addressCity = property.address.city
-        entity.addressState = property.address.state
-        entity.addressZipCode = property.address.zipCode
+        entity.addressProvince = property.address.province
+        entity.addressPostalCode = property.address.postalCode
         entity.addressCountry = property.address.country
         entity.price = property.price as NSDecimalNumber
         entity.propertyType = property.propertyType.rawValue
@@ -400,40 +400,23 @@ class LocalDataSource: LocalDataSourceProtocol {
             phoneNumber: entity.phoneNumber,
             profilePhotoURL: profilePhotoURL,
             role: role,
+            licenseNumber: entity.licenseNumber,
             visibilitySettings: visibility,
             createdAt: entity.createdAt
         )
     }
-    
+
     private func mapToEntity(profile: UserProfile, entity: UserProfileEntity) {
         entity.name = profile.name
         entity.email = profile.email
         entity.phoneNumber = profile.phoneNumber
         entity.profilePhotoURLString = profile.profilePhotoURL?.absoluteString
         entity.role = profile.role.rawValue
+        entity.licenseNumber = profile.licenseNumber
         entity.visibilityShowEmail = profile.visibilitySettings.showEmail
         entity.visibilityShowPhone = profile.visibilitySettings.showPhone
         entity.visibilityShowListings = profile.visibilitySettings.showListings
         entity.createdAt = profile.createdAt
     }
     
-    // MARK: - Distance Calculation
-    
-    private func calculateDistance(from: Coordinate, to: Coordinate) -> Double {
-        // Haversine formula for calculating distance between two coordinates
-        let earthRadiusMiles = 3959.0
-        
-        let lat1Rad = from.latitude * .pi / 180
-        let lat2Rad = to.latitude * .pi / 180
-        let deltaLatRad = (to.latitude - from.latitude) * .pi / 180
-        let deltaLonRad = (to.longitude - from.longitude) * .pi / 180
-        
-        let a = sin(deltaLatRad / 2) * sin(deltaLatRad / 2) +
-                cos(lat1Rad) * cos(lat2Rad) *
-                sin(deltaLonRad / 2) * sin(deltaLonRad / 2)
-        
-        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        
-        return earthRadiusMiles * c
-    }
 }

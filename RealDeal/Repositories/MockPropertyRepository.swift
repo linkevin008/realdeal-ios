@@ -105,7 +105,7 @@ class MockPropertyRepository: PropertyRepositoryProtocol {
         // Location radius filter
         if let locationRadius = filters.locationRadius {
             filtered = filtered.filter { property in
-                let distance = calculateDistance(
+                let distance = GeoUtils.distance(
                     from: locationRadius.center,
                     to: property.location
                 )
@@ -137,24 +137,6 @@ class MockPropertyRepository: PropertyRepositoryProtocol {
         }
         
         return filtered
-    }
-    
-    private func calculateDistance(from: Coordinate, to: Coordinate) -> Double {
-        // Haversine formula for calculating distance between two coordinates
-        let earthRadius = 3959.0 // miles
-        
-        let lat1 = from.latitude * .pi / 180
-        let lat2 = to.latitude * .pi / 180
-        let deltaLat = (to.latitude - from.latitude) * .pi / 180
-        let deltaLon = (to.longitude - from.longitude) * .pi / 180
-        
-        let a = sin(deltaLat / 2) * sin(deltaLat / 2) +
-                cos(lat1) * cos(lat2) *
-                sin(deltaLon / 2) * sin(deltaLon / 2)
-        
-        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        
-        return earthRadius * c
     }
     
     // MARK: - Test Helpers

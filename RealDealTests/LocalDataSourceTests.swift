@@ -26,15 +26,15 @@ final class LocalDataSourceTests: XCTestCase {
         let property = Property(
             address: Address(
                 street: "123 Main St",
-                city: "San Francisco",
-                state: "CA",
-                zipCode: "94102",
-                country: "USA"
+                city: "Toronto",
+                province: "ON",
+                postalCode: "M5H 1J9",
+                country: "Canada"
             ),
             price: 1000000,
             propertyType: .house,
             description: "Beautiful house",
-            location: Coordinate(latitude: 37.7749, longitude: -122.4194)
+            location: Coordinate(latitude: 43.6532, longitude: -79.3832)
         )
         
         // Save the property
@@ -54,7 +54,7 @@ final class LocalDataSourceTests: XCTestCase {
     func testFetchPropertiesWithFilters() async throws {
         // Create test properties
         let property1 = Property(
-            address: Address(street: "123 Main St", city: "SF", state: "CA", zipCode: "94102", country: "USA"),
+            address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 500000,
             propertyType: .house,
             description: "House 1",
@@ -62,7 +62,7 @@ final class LocalDataSourceTests: XCTestCase {
         )
         
         let property2 = Property(
-            address: Address(street: "456 Oak Ave", city: "SF", state: "CA", zipCode: "94103", country: "USA"),
+            address: Address(street: "456 Oak Ave", city: "Toronto", province: "ON", postalCode: "M4Y 1X7", country: "Canada"),
             price: 1500000,
             propertyType: .apartment,
             description: "Apartment 1",
@@ -82,7 +82,7 @@ final class LocalDataSourceTests: XCTestCase {
     func testDeleteProperty() async throws {
         // Create and save a property
         let property = Property(
-            address: Address(street: "123 Main St", city: "SF", state: "CA", zipCode: "94102", country: "USA"),
+            address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
             price: 1000000,
             propertyType: .house,
             description: "Test house",
@@ -111,21 +111,23 @@ final class LocalDataSourceTests: XCTestCase {
             name: "John Doe",
             email: "john@example.com",
             phoneNumber: "555-1234",
-            role: .seller
+            role: .agent,
+            licenseNumber: "A1234"
         )
-        
+
         // Save the profile
         try await localDataSource.saveUserProfile(profile)
-        
+
         // Fetch the profile
         let fetchedProfile = try await localDataSource.getUserProfile(id: profile.id)
-        
+
         // Verify
         XCTAssertNotNil(fetchedProfile)
         XCTAssertEqual(fetchedProfile?.id, profile.id)
         XCTAssertEqual(fetchedProfile?.name, "John Doe")
         XCTAssertEqual(fetchedProfile?.email, "john@example.com")
-        XCTAssertEqual(fetchedProfile?.role, .seller)
+        XCTAssertEqual(fetchedProfile?.role, .agent)
+        XCTAssertEqual(fetchedProfile?.licenseNumber, "A1234")
     }
     
     func testDeleteUserProfile() async throws {

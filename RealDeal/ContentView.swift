@@ -2,50 +2,54 @@ import SwiftUI
 
 @available(iOS 17.0, macOS 12.0, *)
 struct ContentView: View {
-    // Initialize repositories and services
-    private let persistenceController = PersistenceController.shared
+    // MARK: - Data layer (shared across the app)
     private let localDataSource: LocalDataSource
     private let mockRemoteDataSource: MockRemoteDataSource
     private let propertyRepository: PropertyRepository
     private let userProfileRepository: UserProfileRepository
     private let favoritesRepository: FavoritesRepository
     private let propertyListingService: PropertyListingService
-    
+
+    // MARK: - Auth (owns the auth view model so user state flows to all tabs)
+    @StateObject private var authViewModel: AuthViewModel
+
     init() {
-        // Set up data sources
-        self.localDataSource = LocalDataSource(persistenceController: PersistenceController.shared)
-        self.mockRemoteDataSource = MockRemoteDataSource()
-        
-        // Set up repositories
-        self.propertyRepository = PropertyRepository(
-            localDataSource: localDataSource,
-            remoteDataSource: mockRemoteDataSource
+        let localDS = LocalDataSource(persistenceController: PersistenceController.shared)
+        let remoteDS = MockRemoteDataSource()
+
+        let propRepo = PropertyRepository(
+            localDataSource: localDS,
+            remoteDataSource: remoteDS,
+            creaDataSource: MockCREADataSource(simulateNetworkDelay: false)
         )
-        self.userProfileRepository = UserProfileRepository(
-            localDataSource: localDataSource,
-            remoteDataSource: mockRemoteDataSource
+        let userRepo = UserProfileRepository(localDataSource: localDS, remoteDataSource: remoteDS)
+        let favRepo  = FavoritesRepository(localDataSource: localDS, remoteDataSource: remoteDS)
+
+        self.localDataSource        = localDS
+        self.mockRemoteDataSource   = remoteDS
+        self.propertyRepository     = propRepo
+        self.userProfileRepository  = userRepo
+        self.favoritesRepository    = favRepo
+        self.propertyListingService = PropertyListingService(repository: propRepo)
+
+        let authService = AuthenticationService(
+            backendAuth: MockAuthenticationService(),
+            userProfileRepository: userRepo
         )
-        self.favoritesRepository = FavoritesRepository(
-            localDataSource: localDataSource,
-            remoteDataSource: mockRemoteDataSource
-        )
-        
-        // Set up services
-        self.propertyListingService = PropertyListingService(
-            repository: propertyRepository
-        )
+        _authViewModel = StateObject(wrappedValue: AuthViewModel(authService: authService))
     }
-    
+
     var body: some View {
         #if os(iOS)
         MainTabView(
+            authViewModel: authViewModel,
             propertyRepository: propertyRepository,
             userProfileRepository: userProfileRepository,
             favoritesRepository: favoritesRepository,
             propertyListingService: propertyListingService
         )
         #else
-        Text("Real Estate Listings - macOS version coming soon")
+        Text("RealDeal — macOS version coming soon")
             .padding()
         #endif
     }

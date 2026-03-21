@@ -117,17 +117,17 @@ struct PersistenceController {
         addressCityAttr.isOptional = false
         propertyAttributes.append(addressCityAttr)
         
-        let addressStateAttr = NSAttributeDescription()
-        addressStateAttr.name = "addressState"
-        addressStateAttr.attributeType = .stringAttributeType
-        addressStateAttr.isOptional = false
-        propertyAttributes.append(addressStateAttr)
+        let addressProvinceAttr = NSAttributeDescription()
+        addressProvinceAttr.name = "addressProvince"
+        addressProvinceAttr.attributeType = .stringAttributeType
+        addressProvinceAttr.isOptional = false
+        propertyAttributes.append(addressProvinceAttr)
         
-        let addressZipCodeAttr = NSAttributeDescription()
-        addressZipCodeAttr.name = "addressZipCode"
-        addressZipCodeAttr.attributeType = .stringAttributeType
-        addressZipCodeAttr.isOptional = false
-        propertyAttributes.append(addressZipCodeAttr)
+        let addressPostalCodeAttr = NSAttributeDescription()
+        addressPostalCodeAttr.name = "addressPostalCode"
+        addressPostalCodeAttr.attributeType = .stringAttributeType
+        addressPostalCodeAttr.isOptional = false
+        propertyAttributes.append(addressPostalCodeAttr)
         
         let addressCountryAttr = NSAttributeDescription()
         addressCountryAttr.name = "addressCountry"
@@ -275,7 +275,13 @@ struct PersistenceController {
         roleAttr.attributeType = .stringAttributeType
         roleAttr.isOptional = false
         userProfileAttributes.append(roleAttr)
-        
+
+        let licenseNumberAttr = NSAttributeDescription()
+        licenseNumberAttr.name = "licenseNumber"
+        licenseNumberAttr.attributeType = .stringAttributeType
+        licenseNumberAttr.isOptional = true
+        userProfileAttributes.append(licenseNumberAttr)
+
         let visibilityShowEmailAttr = NSAttributeDescription()
         visibilityShowEmailAttr.name = "visibilityShowEmail"
         visibilityShowEmailAttr.attributeType = .booleanAttributeType

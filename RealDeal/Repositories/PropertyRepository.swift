@@ -5,24 +5,42 @@ class PropertyRepository: PropertyRepositoryProtocol {
     private let localDataSource: LocalDataSourceProtocol
     private let remoteDataSource: RemoteDataSourceProtocol
     private let networkMonitor: NetworkMonitor
-    
+    /// Optional CREA DDF data source. When non-nil and the device is online,
+    /// listings are fetched from CREA and the results are cached locally.
+    /// Set to a `MockCREADataSource` during development or a live implementation
+    /// once `CREAConfiguration.isConfigured` is true.
+    private let creaDataSource: CREADataSourceProtocol?
+
     init(
         localDataSource: LocalDataSourceProtocol,
         remoteDataSource: RemoteDataSourceProtocol,
-        networkMonitor: NetworkMonitor = .shared
+        networkMonitor: NetworkMonitor = .shared,
+        creaDataSource: CREADataSourceProtocol? = nil
     ) {
         self.localDataSource = localDataSource
         self.remoteDataSource = remoteDataSource
         self.networkMonitor = networkMonitor
+        self.creaDataSource = creaDataSource
     }
-    
+
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property] {
-        // Offline-first: Try remote first if connected, fall back to cache
+        // CREA path: use when a CREA data source is wired up and the device is online.
+        if let crea = creaDataSource, networkMonitor.isConnected {
+            do {
+                let properties = try await crea.fetchListings(filters: filters)
+                try await localDataSource.saveProperties(properties)
+                return properties
+            } catch {
+                // CREA fetch failed — fall through to the standard remote/cache path.
+            }
+        }
+
+        // Standard path: remote first if connected, fall back to cache
         if networkMonitor.isConnected {
             do {
                 // Use retry logic for network requests
                 let properties = try await remoteDataSource.fetchProperties(filters: filters)
-                
+
                 // Cache the results locally
                 try await localDataSource.saveProperties(properties)
                 return properties
@@ -109,15 +127,19 @@ class PropertyRepository: PropertyRepositoryProtocol {
         if let cachedProperty = try await localDataSource.getProperty(id: id) {
             return cachedProperty
         }
-        
-        // If not in cache and connected, try remote
+
+        // If not in cache and connected, fetch from remote
         if networkMonitor.isConnected {
-            // Note: RemoteDataSourceProtocol doesn't have getProperty method
-            // So we'll just return nil if not in cache
-            // In a production app, you might want to add this method to the protocol
-            return nil
+            let remoteProperty = try await remoteDataSource.getProperty(id: id)
+
+            // Cache the result locally if found
+            if let property = remoteProperty {
+                try await localDataSource.saveProperty(property)
+            }
+
+            return remoteProperty
         }
-        
+
         return nil
     }
 }

@@ -257,7 +257,7 @@ struct PropertyListingCard: View {
                     Text(property.address.street)
                         .font(.headline)
                     
-                    Text("\(property.address.city), \(property.address.state)")
+                    Text("\(property.address.city), \(property.address.province)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -265,7 +265,7 @@ struct PropertyListingCard: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("$\(formattedPrice(property.price))")
+                    Text(formattedPrice(property.price))
                         .font(.headline)
                         .foregroundColor(.blue)
                     
@@ -301,7 +301,9 @@ struct PropertyListingCard: View {
     
     private func formattedPrice(_ price: Decimal) -> String {
         let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "CAD"
+        formatter.locale = Locale(identifier: "en_CA")
         formatter.maximumFractionDigits = 0
         return formatter.string(from: price as NSDecimalNumber) ?? "\(price)"
     }

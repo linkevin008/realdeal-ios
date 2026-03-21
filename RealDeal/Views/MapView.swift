@@ -292,7 +292,7 @@ struct PropertyPreviewCard: View {
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                     
-                    Text("\(property.address.city), \(property.address.state)")
+                    Text("\(property.address.city), \(property.address.province)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     

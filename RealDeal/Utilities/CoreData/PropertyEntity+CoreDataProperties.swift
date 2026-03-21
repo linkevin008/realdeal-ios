@@ -10,8 +10,8 @@ extension PropertyEntity {
     @NSManaged public var id: String
     @NSManaged public var addressStreet: String
     @NSManaged public var addressCity: String
-    @NSManaged public var addressState: String
-    @NSManaged public var addressZipCode: String
+    @NSManaged public var addressProvince: String
+    @NSManaged public var addressPostalCode: String
     @NSManaged public var addressCountry: String
     @NSManaged public var price: NSDecimalNumber
     @NSManaged public var propertyType: String

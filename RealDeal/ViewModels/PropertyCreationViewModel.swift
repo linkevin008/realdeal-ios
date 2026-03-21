@@ -18,9 +18,9 @@ class PropertyCreationViewModel: ObservableObject {
     // Form fields - Address
     @Published var street: String = ""
     @Published var city: String = ""
-    @Published var state: String = ""
-    @Published var zipCode: String = ""
-    @Published var country: String = "USA"
+    @Published var province: String = ""
+    @Published var postalCode: String = ""
+    @Published var country: String = "Canada"
     
     // Form fields - Basic Info
     @Published var price: String = ""
@@ -45,8 +45,8 @@ class PropertyCreationViewModel: ObservableObject {
     // Validation errors
     @Published var streetValidationError: String?
     @Published var cityValidationError: String?
-    @Published var stateValidationError: String?
-    @Published var zipCodeValidationError: String?
+    @Published var provinceValidationError: String?
+    @Published var postalCodeValidationError: String?
     @Published var priceValidationError: String?
     @Published var descriptionValidationError: String?
     @Published var locationValidationError: String?
@@ -122,38 +122,38 @@ class PropertyCreationViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // State validation
-        $state
+        // Province validation
+        $province
             .debounce(for: 0.3, scheduler: DispatchQueue.main)
             .sink { [weak self] value in
                 guard let self = self, !value.isEmpty else {
-                    self?.stateValidationError = nil
+                    self?.provinceValidationError = nil
                     return
                 }
-                
+
                 if value.trimmingCharacters(in: .whitespaces).isEmpty {
-                    self.stateValidationError = "State is required"
+                    self.provinceValidationError = "Province is required"
                 } else {
-                    self.stateValidationError = nil
+                    self.provinceValidationError = nil
                 }
             }
             .store(in: &cancellables)
         
-        // Zip code validation
-        $zipCode
+        // Postal code validation
+        $postalCode
             .debounce(for: 0.3, scheduler: DispatchQueue.main)
             .sink { [weak self] value in
                 guard let self = self, !value.isEmpty else {
-                    self?.zipCodeValidationError = nil
+                    self?.postalCodeValidationError = nil
                     return
                 }
-                
-                let zipPattern = "^[0-9]{5}(-[0-9]{4})?$"
-                let zipPredicate = NSPredicate(format: "SELF MATCHES %@", zipPattern)
-                if !zipPredicate.evaluate(with: value) {
-                    self.zipCodeValidationError = "Zip code must be in format 12345 or 12345-6789"
+
+                let postalPattern = "^[A-Za-z0-9][A-Za-z0-9\\s\\-]{1,8}[A-Za-z0-9]$"
+                let postalPredicate = NSPredicate(format: "SELF MATCHES %@", postalPattern)
+                if !postalPredicate.evaluate(with: value) {
+                    self.postalCodeValidationError = "Please enter a valid postal code"
                 } else {
-                    self.zipCodeValidationError = nil
+                    self.postalCodeValidationError = nil
                 }
             }
             .store(in: &cancellables)
@@ -380,8 +380,8 @@ class PropertyCreationViewModel: ObservableObject {
     private func populateFormFields(from property: Property) {
         street = property.address.street
         city = property.address.city
-        state = property.address.state
-        zipCode = property.address.zipCode
+        province = property.address.province
+        postalCode = property.address.postalCode
         country = property.address.country
         
         price = property.price.description
@@ -403,9 +403,9 @@ class PropertyCreationViewModel: ObservableObject {
     private func clearForm() {
         street = ""
         city = ""
-        state = ""
-        zipCode = ""
-        country = "USA"
+        province = ""
+        postalCode = ""
+        country = "Canada"
         
         price = ""
         propertyType = .house
@@ -425,8 +425,8 @@ class PropertyCreationViewModel: ObservableObject {
         
         streetValidationError = nil
         cityValidationError = nil
-        stateValidationError = nil
-        zipCodeValidationError = nil
+        provinceValidationError = nil
+        postalCodeValidationError = nil
         priceValidationError = nil
         descriptionValidationError = nil
         locationValidationError = nil
@@ -446,15 +446,15 @@ class PropertyCreationViewModel: ObservableObject {
             isValid = false
         }
         
-        if state.trimmingCharacters(in: .whitespaces).isEmpty {
-            stateValidationError = "State is required"
+        if province.trimmingCharacters(in: .whitespaces).isEmpty {
+            provinceValidationError = "Province is required"
             isValid = false
         }
         
-        let zipPattern = "^[0-9]{5}(-[0-9]{4})?$"
-        let zipPredicate = NSPredicate(format: "SELF MATCHES %@", zipPattern)
-        if !zipPredicate.evaluate(with: zipCode) {
-            zipCodeValidationError = "Zip code must be in format 12345 or 12345-6789"
+        let postalPattern = "^[A-Za-z0-9][A-Za-z0-9\\s\\-]{1,8}[A-Za-z0-9]$"
+        let postalPredicate = NSPredicate(format: "SELF MATCHES %@", postalPattern)
+        if !postalPredicate.evaluate(with: postalCode) {
+            postalCodeValidationError = "Please enter a valid postal code"
             isValid = false
         }
         
@@ -496,8 +496,8 @@ class PropertyCreationViewModel: ObservableObject {
         let address = Address(
             street: street,
             city: city,
-            state: state,
-            zipCode: zipCode,
+            province: province,
+            postalCode: postalCode,
             country: country
         )
         
@@ -529,16 +529,16 @@ class PropertyCreationViewModel: ObservableObject {
     var canSave: Bool {
         !street.isEmpty &&
         !city.isEmpty &&
-        !state.isEmpty &&
-        !zipCode.isEmpty &&
+        !province.isEmpty &&
+        !postalCode.isEmpty &&
         !price.isEmpty &&
         !propertyDescription.isEmpty &&
         !latitude.isEmpty &&
         !longitude.isEmpty &&
         streetValidationError == nil &&
         cityValidationError == nil &&
-        stateValidationError == nil &&
-        zipCodeValidationError == nil &&
+        provinceValidationError == nil &&
+        postalCodeValidationError == nil &&
         priceValidationError == nil &&
         descriptionValidationError == nil &&
         locationValidationError == nil &&

@@ -15,7 +15,7 @@ final class FilterServiceTests: XCTestCase {
         testProperties = [
             Property(
                 id: "1",
-                address: Address(street: "123 Main St", city: "San Francisco", state: "CA", zipCode: "94102", country: "USA"),
+                address: Address(street: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5H 1J9", country: "Canada"),
                 price: 500000,
                 propertyType: .house,
                 description: "Nice house",
@@ -27,7 +27,7 @@ final class FilterServiceTests: XCTestCase {
             ),
             Property(
                 id: "2",
-                address: Address(street: "456 Oak Ave", city: "San Francisco", state: "CA", zipCode: "94103", country: "USA"),
+                address: Address(street: "456 Oak Ave", city: "Toronto", province: "ON", postalCode: "M4Y 1X7", country: "Canada"),
                 price: 750000,
                 propertyType: .apartment,
                 description: "Modern apartment",
@@ -39,7 +39,7 @@ final class FilterServiceTests: XCTestCase {
             ),
             Property(
                 id: "3",
-                address: Address(street: "789 Pine St", city: "Oakland", state: "CA", zipCode: "94601", country: "USA"),
+                address: Address(street: "789 Pine St", city: "Mississauga", province: "ON", postalCode: "L5B 3C4", country: "Canada"),
                 price: 300000,
                 propertyType: .condo,
                 description: "Cozy condo",
@@ -249,7 +249,7 @@ final class FilterServiceTests: XCTestCase {
         // Add a property without bedroom/bathroom specs
         let propertyWithoutSpecs = Property(
             id: "4",
-            address: Address(street: "999 Test St", city: "Test City", state: "CA", zipCode: "94000", country: "USA"),
+            address: Address(street: "999 Test St", city: "Test City", province: "ON", postalCode: "A1A 1A1", country: "Canada"),
             price: 400000,
             propertyType: .house,
             description: "Test property",

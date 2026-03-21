@@ -1,10 +1,11 @@
 import SwiftUI
+import AuthenticationServices
 
 @available(iOS 15.0, macOS 12.0, *)
 struct LoginView: View {
     @ObservedObject var viewModel: AuthViewModel
     @State private var showRegistration = false
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -14,42 +15,38 @@ struct LoginView: View {
                         Image(systemName: "house.fill")
                             .font(.system(size: 60))
                             .foregroundColor(.blue)
-                        
+
                         Text("RealDeal")
                             .font(.largeTitle)
                             .fontWeight(.bold)
-                        
+
                         Text("Find your perfect property")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
                     .padding(.top, 40)
                     .padding(.bottom, 20)
-                    
+
                     // Login Form
                     VStack(spacing: 16) {
                         // Email Field
-                        VStack(alignment: .leading, spacing: 4) {
-                            TextField("Email", text: $viewModel.loginEmail)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                #if os(iOS)
-                                .textContentType(.emailAddress)
-                                .autocapitalization(.none)
-                                .keyboardType(.emailAddress)
-                                #endif
-                                .disabled(viewModel.isLoading)
-                        }
-                        
+                        TextField("Email", text: $viewModel.loginEmail)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            #if os(iOS)
+                            .textContentType(.emailAddress)
+                            .autocapitalization(.none)
+                            .keyboardType(.emailAddress)
+                            #endif
+                            .disabled(viewModel.isLoading)
+
                         // Password Field
-                        VStack(alignment: .leading, spacing: 4) {
-                            SecureField("Password", text: $viewModel.loginPassword)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                #if os(iOS)
-                                .textContentType(.password)
-                                #endif
-                                .disabled(viewModel.isLoading)
-                        }
-                        
+                        SecureField("Password", text: $viewModel.loginPassword)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            #if os(iOS)
+                            .textContentType(.password)
+                            #endif
+                            .disabled(viewModel.isLoading)
+
                         // Error Message
                         if let errorMessage = viewModel.errorMessage {
                             Text(errorMessage)
@@ -57,12 +54,10 @@ struct LoginView: View {
                                 .foregroundColor(.red)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        
+
                         // Sign In Button
                         Button(action: {
-                            Task {
-                                await viewModel.signIn()
-                            }
+                            Task { await viewModel.signIn() }
                         }) {
                             HStack {
                                 if viewModel.isLoading {
@@ -79,29 +74,64 @@ struct LoginView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                         }
-                        .disabled(!viewModel.canSignIn)
-                        
+                        .disabled(!viewModel.canSignIn || viewModel.isLoading)
+
                         // Divider
                         HStack {
-                            Rectangle()
-                                .frame(height: 1)
-                                .foregroundColor(.gray.opacity(0.3))
-                            
-                            Text("or")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 8)
-                            
-                            Rectangle()
-                                .frame(height: 1)
-                                .foregroundColor(.gray.opacity(0.3))
+                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.3))
+                            Text("or").font(.caption).foregroundColor(.secondary).padding(.horizontal, 8)
+                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.3))
                         }
-                        .padding(.vertical, 8)
-                        
+                        .padding(.vertical, 4)
+
+                        // Apple Sign In
+                        #if os(iOS)
+                        SignInWithAppleButton(.signIn) { request in
+                            request.requestedScopes = [.fullName, .email]
+                            request.nonce = viewModel.prepareAppleSignIn()
+                        } onCompletion: { result in
+                            Task { await viewModel.handleAppleSignIn(result: result) }
+                        }
+                        .signInWithAppleButtonStyle(.black)
+                        .frame(height: 50)
+                        .cornerRadius(10)
+                        .disabled(viewModel.isLoading)
+                        #endif
+
+                        // Google Sign In
+                        // NOTE: Requires the GoogleSignIn SDK (SPM: https://github.com/google/GoogleSignIn-iOS).
+                        // After adding the package, replace this button with GIDSignInButton or call
+                        // GIDSignIn.sharedInstance.signIn(withPresenting:) and pass the resulting idToken
+                        // to viewModel.handleGoogleSignIn(idToken:).
+                        Button(action: googleSignIn) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "g.circle.fill")
+                                    .foregroundColor(.red)
+                                Text("Sign in with Google")
+                                    .fontWeight(.medium)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .foregroundColor(.primary)
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.gray.opacity(0.4), lineWidth: 1)
+                            )
+                        }
+                        .disabled(viewModel.isLoading)
+
+                        // Divider
+                        HStack {
+                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.3))
+                            Text("new here?").font(.caption).foregroundColor(.secondary).padding(.horizontal, 8)
+                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.3))
+                        }
+                        .padding(.vertical, 4)
+
                         // Sign Up Button
-                        Button(action: {
-                            showRegistration = true
-                        }) {
+                        Button(action: { showRegistration = true }) {
                             Text("Create New Account")
                                 .fontWeight(.semibold)
                                 .frame(maxWidth: .infinity)
@@ -116,7 +146,7 @@ struct LoginView: View {
                         .disabled(viewModel.isLoading)
                     }
                     .padding(.horizontal, 24)
-                    
+
                     Spacer()
                 }
             }
@@ -127,6 +157,23 @@ struct LoginView: View {
                 RegistrationView(viewModel: viewModel)
             }
         }
+    }
+
+    // MARK: - Google Sign In
+
+    private func googleSignIn() {
+        // TODO: Wire up GoogleSignIn SDK.
+        // 1. Add package: https://github.com/google/GoogleSignIn-iOS (SPM)
+        // 2. Configure in Info.plist with your CLIENT_ID from Google Cloud Console.
+        // 3. Replace this stub with:
+        //
+        //    guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+        //          let rootVC = scene.windows.first?.rootViewController else { return }
+        //    GIDSignIn.sharedInstance.signIn(withPresenting: rootVC) { result, error in
+        //        guard let idToken = result?.user.idToken?.tokenString else { return }
+        //        Task { await viewModel.handleGoogleSignIn(idToken: idToken) }
+        //    }
+        viewModel.errorMessage = "Google Sign In: add the GoogleSignIn SDK to enable this."
     }
 }
 
@@ -146,8 +193,6 @@ struct LoginView_Previews: PreviewProvider {
             backendAuth: mockBackendAuth,
             userProfileRepository: mockUserRepo
         )
-        let viewModel = AuthViewModel(authService: authService)
-        
-        return LoginView(viewModel: viewModel)
+        return LoginView(viewModel: AuthViewModel(authService: authService))
     }
 }

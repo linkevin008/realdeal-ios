@@ -22,9 +22,9 @@ class MapViewModel: ObservableObject {
     private let locationManager: LocationManager
     private var cancellables = Set<AnyCancellable>()
     
-    // Default region (San Francisco Bay Area)
+    // Default region (Vancouver, BC)
     private static let defaultRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+        center: CLLocationCoordinate2D(latitude: 49.2827, longitude: -123.1207),
         span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
     )
     

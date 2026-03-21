@@ -89,5 +89,3 @@ struct PasswordValidator {
     }
 }
 
-// MARK: - Profile Photo Validation (requirement 7.4)
-// Note: ProfilePhotoValidator is defined in Utilities/ProfilePhotoValidator.swift

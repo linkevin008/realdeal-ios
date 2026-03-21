@@ -6,26 +6,36 @@ import Combine
 @MainActor
 class NavigationCoordinator: ObservableObject {
     // MARK: - Published Properties
-    
+
     /// Current selected tab
     @Published var selectedTab: AppTab = .browse
-    
+
     /// Navigation paths for each tab
     @Published var browseNavigationPath = NavigationPath()
     @Published var mapNavigationPath = NavigationPath()
     @Published var favoritesNavigationPath = NavigationPath()
     @Published var myListingsNavigationPath = NavigationPath()
     @Published var profileNavigationPath = NavigationPath()
-    
+
+    // MARK: - Dependencies
+
+    private let propertyRepository: PropertyRepositoryProtocol
+
+    // MARK: - Init
+
+    init(propertyRepository: PropertyRepositoryProtocol) {
+        self.propertyRepository = propertyRepository
+    }
+
     // MARK: - Tab Definition
-    
+
     enum AppTab: String, CaseIterable {
         case browse
         case map
         case favorites
         case myListings
         case profile
-        
+
         var title: String {
             switch self {
             case .browse: return "Browse"
@@ -35,7 +45,7 @@ class NavigationCoordinator: ObservableObject {
             case .profile: return "Profile"
             }
         }
-        
+
         var icon: String {
             switch self {
             case .browse: return "list.bullet"
@@ -46,9 +56,9 @@ class NavigationCoordinator: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Navigation Destinations
-    
+
     enum Destination: Hashable {
         case propertyDetail(property: Property)
         case propertyCreation
@@ -58,17 +68,17 @@ class NavigationCoordinator: ObservableObject {
         case login
         case registration
     }
-    
+
     // MARK: - Navigation Methods
-    
+
     /// Navigate to a property detail view from any tab
     func navigateToPropertyDetail(property: Property, from tab: AppTab? = nil) {
         let destination = Destination.propertyDetail(property: property)
-        
+
         if let tab = tab {
             selectedTab = tab
         }
-        
+
         switch selectedTab {
         case .browse:
             browseNavigationPath.append(destination)
@@ -82,26 +92,26 @@ class NavigationCoordinator: ObservableObject {
             profileNavigationPath.append(destination)
         }
     }
-    
+
     /// Navigate to property creation
     func navigateToPropertyCreation() {
         selectedTab = .myListings
         myListingsNavigationPath.append(Destination.propertyCreation)
     }
-    
+
     /// Navigate to property edit
     func navigateToPropertyEdit(property: Property) {
         selectedTab = .myListings
         myListingsNavigationPath.append(Destination.propertyEdit(property: property))
     }
-    
+
     /// Navigate to a user profile
     func navigateToProfile(userId: String, isOwnProfile: Bool) {
         if isOwnProfile {
             selectedTab = .profile
         } else {
             let destination = Destination.profileView(userId: userId, isOwnProfile: false)
-            
+
             switch selectedTab {
             case .browse:
                 browseNavigationPath.append(destination)
@@ -116,13 +126,13 @@ class NavigationCoordinator: ObservableObject {
             }
         }
     }
-    
+
     /// Navigate to profile edit
     func navigateToProfileEdit() {
         selectedTab = .profile
         profileNavigationPath.append(Destination.profileEdit)
     }
-    
+
     /// Pop to root of current tab
     func popToRoot() {
         switch selectedTab {
@@ -138,7 +148,7 @@ class NavigationCoordinator: ObservableObject {
             profileNavigationPath = NavigationPath()
         }
     }
-    
+
     /// Pop to root of all tabs
     func popAllToRoot() {
         browseNavigationPath = NavigationPath()
@@ -147,12 +157,41 @@ class NavigationCoordinator: ObservableObject {
         myListingsNavigationPath = NavigationPath()
         profileNavigationPath = NavigationPath()
     }
-    
-    /// Handle deep link URL
-    /// TODO: Implement deep linking with property fetching
+
+    // MARK: - Deep Linking
+
+    /// Handle a deep link URL from either the custom scheme (realdeal://) or Universal Links (https://realdeal.app).
+    ///
+    /// Supported routes:
+    ///   realdeal://property/{id}          → property detail
+    ///   realdeal://profile/{id}           → seller profile
+    ///   realdeal://search?type=...        → browse tab with filters (future)
+    ///   realdeal://create-property        → new listing form
     func handleDeepLink(url: URL) {
-        // Deep linking temporarily disabled - needs to fetch Property object by ID
-        // before navigating to detail view
-        return
+        guard let parsed = DeepLinkHelper.parseDeepLink(url) else { return }
+
+        switch parsed.type {
+        case "property":
+            guard let propertyId = parsed.id else { return }
+            Task {
+                if let property = try? await propertyRepository.getProperty(id: propertyId) {
+                    navigateToPropertyDetail(property: property, from: .browse)
+                }
+            }
+
+        case "profile":
+            guard let userId = parsed.id else { return }
+            let isOwn = parsed.parameters["own"] == "true"
+            navigateToProfile(userId: userId, isOwnProfile: isOwn)
+
+        case "create-property":
+            navigateToPropertyCreation()
+
+        case "search":
+            selectedTab = .browse
+
+        default:
+            break
+        }
     }
 }

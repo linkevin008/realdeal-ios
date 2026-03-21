@@ -140,14 +140,15 @@ class PropertyDetailViewModel: ObservableObject {
     var formattedPrice: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
+        formatter.currencyCode = "CAD"
+        formatter.locale = Locale(identifier: "en_CA")
         formatter.maximumFractionDigits = 0
         return formatter.string(from: property.price as NSDecimalNumber) ?? "$0"
     }
-    
+
     /// Formatted address string
     var formattedAddress: String {
-        "\(property.address.street), \(property.address.city), \(property.address.state) \(property.address.zipCode)"
+        "\(property.address.street), \(property.address.city), \(property.address.province) \(property.address.postalCode)"
     }
     
     /// Formatted property type

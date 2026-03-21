@@ -76,12 +76,30 @@ struct RegistrationView: View {
                                 .fontWeight(.medium)
                             
                             Picker("Role", selection: $viewModel.registerRole) {
-                                Text("Buyer").tag(UserRole.buyer)
-                                Text("Seller").tag(UserRole.seller)
-                                Text("Both").tag(UserRole.both)
+                                ForEach(UserRole.allCases, id: \.self) { role in
+                                    Text(role.displayName).tag(role)
+                                }
                             }
                             .pickerStyle(SegmentedPickerStyle())
                             .disabled(viewModel.isLoading)
+
+                            // License number field — only shown for agents
+                            if viewModel.registerRole == .agent {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    TextField("CREA License Number", text: $viewModel.registerLicenseNumber)
+                                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                                        #if os(iOS)
+                                        .autocapitalization(.allCharacters)
+                                        #endif
+                                        .disabled(viewModel.isLoading)
+
+                                    if let error = viewModel.licenseNumberValidationError {
+                                        Text(error)
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                            }
                         }
                         
                         // Password Field

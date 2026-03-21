@@ -495,23 +495,22 @@ struct PropertyDetailView_Previews: PreviewProvider {
                 viewModel: PropertyDetailViewModel(
                     property: Property(
                         address: Address(
-                            street: "123 Main St",
-                            city: "San Francisco",
-                            state: "CA",
-                            zipCode: "94102",
-                            country: "USA"
+                            street: "123 King Street West",
+                            city: "Toronto",
+                            province: "ON",
+                            postalCode: "M5H 1J9",
+                            country: "Canada"
                         ),
-                        price: 1250000,
-                        propertyType: .house,
-                        description: "Beautiful Victorian home in the heart of San Francisco",
+                        price: 1350000,
+                        propertyType: .condo,
+                        description: "Modern condo in downtown Toronto with stunning city views",
                         specifications: PropertySpecifications(
-                            bedrooms: 3,
-                            bathrooms: 2.5,
-                            squareFeet: 2000,
-                            lotSize: 0.15,
-                            yearBuilt: 1920
+                            bedrooms: 2,
+                            bathrooms: 2.0,
+                            squareFeet: 950,
+                            yearBuilt: 2018
                         ),
-                        location: Coordinate(latitude: 37.7749, longitude: -122.4194),
+                        location: Coordinate(latitude: 43.6483, longitude: -79.3831),
                         sellerId: "seller123"
                     ),
                     propertyRepository: MockPropertyRepository(),

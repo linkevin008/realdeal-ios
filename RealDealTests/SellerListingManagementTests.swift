@@ -254,9 +254,9 @@ final class SellerListingManagementTests: XCTestCase {
             address: Address(
                 street: "123 Test St",
                 city: "Test City",
-                state: "CA",
-                zipCode: "12345",
-                country: "USA"
+                province: "ON",
+                postalCode: "A1A 1A1",
+                country: "Canada"
             ),
             price: Decimal(500000),
             propertyType: .house,

@@ -1,0 +1,31 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.realdeal.app"],
+        "components": [
+          {
+            "/": "/property/*",
+            "comment": "Opens a property detail screen"
+          },
+          {
+            "/": "/profile/*",
+            "comment": "Opens a seller profile"
+          },
+          {
+            "/": "/search*",
+            "comment": "Opens browse tab with optional filters"
+          },
+          {
+            "/": "/create-property",
+            "comment": "Opens the new listing form"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.com.realdeal.app"]
+  }
+}

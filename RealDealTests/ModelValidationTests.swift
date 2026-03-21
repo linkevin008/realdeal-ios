@@ -10,9 +10,9 @@ final class ModelValidationTests: XCTestCase {
             address: Address(
                 street: "123 Main St",
                 city: "San Francisco",
-                state: "CA",
-                zipCode: "94102",
-                country: "USA"
+                province: "ON",
+                postalCode: "M5H 1J9",
+                country: "Canada"
             ),
             price: 500000,
             propertyType: .house,
@@ -28,9 +28,9 @@ final class ModelValidationTests: XCTestCase {
             address: Address(
                 street: "123 Main St",
                 city: "San Francisco",
-                state: "CA",
-                zipCode: "94102",
-                country: "USA"
+                province: "ON",
+                postalCode: "M5H 1J9",
+                country: "Canada"
             ),
             price: -100,
             propertyType: .house,
@@ -46,9 +46,9 @@ final class ModelValidationTests: XCTestCase {
             address: Address(
                 street: "123 Main St",
                 city: "San Francisco",
-                state: "CA",
-                zipCode: "94102",
-                country: "USA"
+                province: "ON",
+                postalCode: "M5H 1J9",
+                country: "Canada"
             ),
             price: 500000,
             propertyType: .house,
@@ -59,13 +59,13 @@ final class ModelValidationTests: XCTestCase {
         XCTAssertThrowsError(try property.validate())
     }
     
-    func testPropertyWithInvalidZipCodeThrowsError() throws {
+    func testPropertyWithInvalidPostalCodeThrowsError() throws {
         let property = Property(
             address: Address(
                 street: "123 Main St",
                 city: "San Francisco",
-                state: "CA",
-                zipCode: "invalid",
+                province: "ON",
+                postalCode: "invalid",
                 country: "USA"
             ),
             price: 500000,
@@ -82,9 +82,9 @@ final class ModelValidationTests: XCTestCase {
             address: Address(
                 street: "123 Main St",
                 city: "San Francisco",
-                state: "CA",
-                zipCode: "94102",
-                country: "USA"
+                province: "ON",
+                postalCode: "M5H 1J9",
+                country: "Canada"
             ),
             price: 500000,
             propertyType: .house,
@@ -198,7 +198,103 @@ final class ModelValidationTests: XCTestCase {
             userId: "user123",
             propertyId: "   "
         )
-        
+
         XCTAssertThrowsError(try favorite.validate())
+    }
+
+    // MARK: - Address / Province Tests
+
+    func testAddressWithValidCanadianPostalCodePassesValidation() throws {
+        // Given: a standard Canadian postal code (e.g. Toronto downtown)
+        let address = Address(
+            street: "123 King Street West",
+            city: "Toronto",
+            province: "ON",
+            postalCode: "M5V 3A8",
+            country: "Canada"
+        )
+
+        // Then: validation passes
+        XCTAssertNoThrow(try address.validate(), "A valid Canadian postal code should pass validation")
+    }
+
+    func testAddressWithUKPostalCodePassesValidation() throws {
+        // Given: a UK-format postal code (international listing)
+        let address = Address(
+            street: "10 Downing Street",
+            city: "London",
+            province: "England",
+            postalCode: "SW1A 2AA",
+            country: "UK"
+        )
+
+        // Then: validation passes (international format is supported)
+        XCTAssertNoThrow(try address.validate(), "A valid UK postal code should pass validation in international mode")
+    }
+
+    func testAddressWithEmptyProvinceThrowsValidationError() throws {
+        // Given: an address missing a province
+        let address = Address(
+            street: "55 Water Street",
+            city: "Vancouver",
+            province: "   ",
+            postalCode: "V6B 1A1",
+            country: "Canada"
+        )
+
+        // Then: validation throws an error about the missing province
+        XCTAssertThrowsError(try address.validate()) { error in
+            if let validationError = error as? ValidationError {
+                switch validationError {
+                case .missingRequiredField(let field):
+                    XCTAssertTrue(field.contains("province"),
+                        "Error should identify 'province' as the missing field, got: \(field)")
+                default:
+                    XCTFail("Expected missingRequiredField error, got: \(validationError)")
+                }
+            } else {
+                XCTFail("Expected a ValidationError, got: \(error)")
+            }
+        }
+    }
+
+    func testAddressUsesProvinceFieldNotStateField() throws {
+        // Given: addresses from the mock CREA data all use `province`, not `state`
+        let onAddress = Address(
+            street: "88 Scott Street",
+            city: "Toronto",
+            province: "ON",
+            postalCode: "M5E 0A9",
+            country: "Canada"
+        )
+        let bcAddress = Address(
+            street: "1480 Howe Street",
+            city: "Vancouver",
+            province: "BC",
+            postalCode: "V6Z 1R8",
+            country: "Canada"
+        )
+
+        // Then: the `province` property correctly stores and returns the value
+        XCTAssertEqual(onAddress.province, "ON", "Address.province should hold the Canadian province code")
+        XCTAssertEqual(bcAddress.province, "BC")
+
+        // And both addresses pass validation (confirming province is used, not state)
+        XCTAssertNoThrow(try onAddress.validate())
+        XCTAssertNoThrow(try bcAddress.validate())
+    }
+
+    func testAddressWithInvalidPostalCodeThrowsError() throws {
+        // Given: a postal code that does not match the allowed pattern
+        let address = Address(
+            street: "1 Test Lane",
+            city: "Calgary",
+            province: "AB",
+            postalCode: "!!!",
+            country: "Canada"
+        )
+
+        // Then: validation throws an error
+        XCTAssertThrowsError(try address.validate(), "An invalid postal code should fail validation")
     }
 }

@@ -57,7 +57,7 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
                 
                 // Location radius filter
                 if let locationRadius = filters.locationRadius {
-                    let distance = calculateDistance(
+                    let distance = GeoUtils.distance(
                         from: property.location,
                         to: locationRadius.center
                     )
@@ -103,6 +103,11 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         return results.filter { $0.status == .active }
     }
     
+    func getProperty(id: String) async throws -> Property? {
+        await simulateDelay()
+        return properties[id]
+    }
+
     func createProperty(_ property: Property) async throws -> Property {
         await simulateDelay()
         
@@ -221,25 +226,6 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         }
         
         images.removeValue(forKey: url)
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func calculateDistance(from: Coordinate, to: Coordinate) -> Double {
-        // Haversine formula for calculating distance between two coordinates
-        let earthRadius = 3959.0 // miles
-        
-        let lat1 = from.latitude * .pi / 180
-        let lat2 = to.latitude * .pi / 180
-        let deltaLat = (to.latitude - from.latitude) * .pi / 180
-        let deltaLon = (to.longitude - from.longitude) * .pi / 180
-        
-        let a = sin(deltaLat / 2) * sin(deltaLat / 2) +
-                cos(lat1) * cos(lat2) *
-                sin(deltaLon / 2) * sin(deltaLon / 2)
-        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        
-        return earthRadius * c
     }
     
     // MARK: - Test Helpers

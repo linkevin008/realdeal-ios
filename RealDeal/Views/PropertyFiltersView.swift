@@ -154,9 +154,8 @@ struct PropertyFiltersView: View {
         viewModel.updatePropertyTypes(selectedTypes)
         
         if useLocationFilter {
-            // For now, use a default location (San Francisco)
-            // In a real app, you'd get the user's actual location
-            let defaultCenter = Coordinate(latitude: 37.7749, longitude: -122.4194)
+            // TODO: replace with the user's actual device location
+            let defaultCenter = Coordinate(latitude: 49.2827, longitude: -123.1207) // Vancouver
             viewModel.updateLocationRadius(center: defaultCenter, radiusInMiles: locationRadius)
         } else {
             viewModel.updateLocationRadius(center: nil, radiusInMiles: nil)
@@ -192,7 +191,8 @@ struct PropertyFiltersView: View {
     private func formatPrice(_ price: Decimal) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
+        formatter.currencyCode = "CAD"
+        formatter.locale = Locale(identifier: "en_CA")
         formatter.maximumFractionDigits = 0
         return formatter.string(from: price as NSDecimalNumber) ?? "$0"
     }

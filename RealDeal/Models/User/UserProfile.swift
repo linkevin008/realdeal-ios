@@ -7,9 +7,11 @@ struct UserProfile: Identifiable, Codable, Equatable {
     var phoneNumber: String?
     var profilePhotoURL: URL?
     var role: UserRole
+    /// CREA license number — required for `.agent` role, nil otherwise
+    var licenseNumber: String?
     var visibilitySettings: ProfileVisibility
     var createdAt: Date
-    
+
     init(
         id: String = UUID().uuidString,
         name: String,
@@ -17,6 +19,7 @@ struct UserProfile: Identifiable, Codable, Equatable {
         phoneNumber: String? = nil,
         profilePhotoURL: URL? = nil,
         role: UserRole = .buyer,
+        licenseNumber: String? = nil,
         visibilitySettings: ProfileVisibility = ProfileVisibility(),
         createdAt: Date = Date()
     ) {
@@ -26,6 +29,7 @@ struct UserProfile: Identifiable, Codable, Equatable {
         self.phoneNumber = phoneNumber
         self.profilePhotoURL = profilePhotoURL
         self.role = role
+        self.licenseNumber = licenseNumber
         self.visibilitySettings = visibilitySettings
         self.createdAt = createdAt
     }

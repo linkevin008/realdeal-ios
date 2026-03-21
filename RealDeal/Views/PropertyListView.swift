@@ -190,7 +190,7 @@ struct PropertyCardView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                Text("\(property.address.city), \(property.address.state) \(property.address.zipCode)")
+                Text("\(property.address.city), \(property.address.province) \(property.address.postalCode)")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
@@ -234,7 +234,8 @@ struct PropertyCardView: View {
     private func formatPrice(_ price: Decimal) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
+        formatter.currencyCode = "CAD"
+        formatter.locale = Locale(identifier: "en_CA")
         formatter.maximumFractionDigits = 0
         return formatter.string(from: price as NSDecimalNumber) ?? "$0"
     }

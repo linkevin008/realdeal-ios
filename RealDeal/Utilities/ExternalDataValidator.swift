@@ -24,18 +24,18 @@ struct ExternalDataValidator {
     private static func validateAddress(_ data: [String: Any]) throws {
         let street = data["street"] as? String
         let city = data["city"] as? String
-        let state = data["state"] as? String
-        
+        let province = data["province"] as? String
+
         if street?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
             throw AppError.validation(.missingRequiredField("street"))
         }
-        
+
         if city?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
             throw AppError.validation(.missingRequiredField("city"))
         }
-        
-        if state?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
-            throw AppError.validation(.missingRequiredField("state"))
+
+        if province?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+            throw AppError.validation(.missingRequiredField("province"))
         }
     }
     

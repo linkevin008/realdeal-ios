@@ -28,15 +28,15 @@ struct PropertyCreationView: View {
                             .foregroundColor(.red)
                     }
                     
-                    TextField("State", text: $viewModel.state)
-                    if let error = viewModel.stateValidationError {
+                    TextField("Province", text: $viewModel.province)
+                    if let error = viewModel.provinceValidationError {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)
                     }
                     
-                    TextField("Zip Code", text: $viewModel.zipCode)
-                    if let error = viewModel.zipCodeValidationError {
+                    TextField("Postal Code", text: $viewModel.postalCode)
+                    if let error = viewModel.postalCodeValidationError {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)

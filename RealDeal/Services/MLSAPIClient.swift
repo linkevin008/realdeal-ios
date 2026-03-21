@@ -108,15 +108,15 @@ class MLSAPIClient: ExternalListingAPIProtocol {
     private func extractAddress(from data: [String: Any]) -> Address {
         let street = sanitizeString(data["street"] as? String) ?? ""
         let city = sanitizeString(data["city"] as? String) ?? ""
-        let state = sanitizeString(data["state"] as? String) ?? ""
-        let zipCode = sanitizeString(data["zip_code"] as? String ?? data["zipCode"] as? String) ?? ""
-        let country = sanitizeString(data["country"] as? String) ?? "USA"
-        
+        let province = sanitizeString(data["province"] as? String) ?? ""
+        let postalCode = sanitizeString(data["postal_code"] as? String ?? data["postalCode"] as? String) ?? ""
+        let country = sanitizeString(data["country"] as? String) ?? "Canada"
+
         return Address(
             street: street,
             city: city,
-            state: state,
-            zipCode: zipCode,
+            province: province,
+            postalCode: postalCode,
             country: country
         )
     }
@@ -239,8 +239,8 @@ private struct MLSListing: Codable {
     let mlsId: String
     let street: String?
     let city: String?
-    let state: String?
-    let zipCode: String?
+    let province: String?
+    let postalCode: String?
     let country: String?
     let price: Double?
     let propertyType: String?
@@ -254,11 +254,11 @@ private struct MLSListing: Codable {
     let latitude: Double?
     let longitude: Double?
     let createdAt: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case mlsId = "mls_id"
-        case street, city, state
-        case zipCode = "zip_code"
+        case street, city, province
+        case postalCode = "postal_code"
         case country, price
         case propertyType = "property_type"
         case description, bedrooms, bathrooms
@@ -268,14 +268,14 @@ private struct MLSListing: Codable {
         case images, latitude, longitude
         case createdAt = "created_at"
     }
-    
+
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = ["mls_id": mlsId]
-        
+
         if let street = street { dict["street"] = street }
         if let city = city { dict["city"] = city }
-        if let state = state { dict["state"] = state }
-        if let zipCode = zipCode { dict["zip_code"] = zipCode }
+        if let province = province { dict["province"] = province }
+        if let postalCode = postalCode { dict["postal_code"] = postalCode }
         if let country = country { dict["country"] = country }
         if let price = price { dict["price"] = price }
         if let propertyType = propertyType { dict["property_type"] = propertyType }
@@ -289,7 +289,7 @@ private struct MLSListing: Codable {
         if let latitude = latitude { dict["latitude"] = latitude }
         if let longitude = longitude { dict["longitude"] = longitude }
         if let createdAt = createdAt { dict["created_at"] = createdAt }
-        
+
         return dict
     }
 }

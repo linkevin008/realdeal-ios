@@ -123,6 +123,28 @@ class AuthenticationService: AuthenticationServiceProtocol {
         return newToken
     }
     
+    func signInWithApple(identityToken: String, nonce: String, fullName: String?, email: String?) async throws -> AuthToken {
+        let token = try await backendAuth.signInWithApple(
+            identityToken: identityToken, nonce: nonce, fullName: fullName, email: email
+        )
+        let profile = backendAuth.currentUser!
+        try keychainManager.saveToken(token)
+        currentToken = token
+        currentUser = profile
+        _ = try await userProfileRepository.createUserProfile(profile)
+        return token
+    }
+
+    func signInWithGoogle(idToken: String) async throws -> AuthToken {
+        let token = try await backendAuth.signInWithGoogle(idToken: idToken)
+        let profile = backendAuth.currentUser!
+        try keychainManager.saveToken(token)
+        currentToken = token
+        currentUser = profile
+        _ = try await userProfileRepository.createUserProfile(profile)
+        return token
+    }
+
     // MARK: - Session Management
     
     /// Attempt to restore session from keychain

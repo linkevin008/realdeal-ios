@@ -176,6 +176,53 @@ class MockAuthenticationService: AuthenticationServiceProtocol {
         return newToken
     }
     
+    func signInWithApple(identityToken: String, nonce: String, fullName: String?, email: String?) async throws -> AuthToken {
+        await simulateDelay()
+        // In production: validate identityToken with Apple's public key via backend.
+        // Here we create/retrieve a mock user keyed on the token.
+        let userId = "apple_\(identityToken.prefix(16))"
+        if let existing = users[userId] {
+            currentUser = existing.profile
+            let token = generateToken(for: userId)
+            tokens[token.accessToken] = token
+            return token
+        }
+        let profile = UserProfile(
+            id: userId,
+            name: fullName ?? "Apple User",
+            email: email ?? "\(userId)@privaterelay.appleid.com",
+            role: .buyer
+        )
+        users[userId] = (email: profile.email, password: "", profile: profile)
+        currentUser = profile
+        let token = generateToken(for: userId)
+        tokens[token.accessToken] = token
+        return token
+    }
+
+    func signInWithGoogle(idToken: String) async throws -> AuthToken {
+        await simulateDelay()
+        // In production: validate idToken with Google's public key via backend.
+        let userId = "google_\(idToken.prefix(16))"
+        if let existing = users[userId] {
+            currentUser = existing.profile
+            let token = generateToken(for: userId)
+            tokens[token.accessToken] = token
+            return token
+        }
+        let profile = UserProfile(
+            id: userId,
+            name: "Google User",
+            email: "\(userId)@gmail.com",
+            role: .buyer
+        )
+        users[userId] = (email: profile.email, password: "", profile: profile)
+        currentUser = profile
+        let token = generateToken(for: userId)
+        tokens[token.accessToken] = token
+        return token
+    }
+
     // MARK: - Test Helpers
     
     /// Seed the mock authentication service with test users

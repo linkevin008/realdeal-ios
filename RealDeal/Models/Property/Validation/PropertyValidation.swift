@@ -37,16 +37,16 @@ extension Address {
             throw ValidationError.missingRequiredField("address.city")
         }
         
-        // Validate state
-        guard !state.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw ValidationError.missingRequiredField("address.state")
+        // Validate province
+        guard !province.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.missingRequiredField("address.province")
         }
         
-        // Validate zip code (basic format check)
-        let zipPattern = "^[0-9]{5}(-[0-9]{4})?$"
-        let zipPredicate = NSPredicate(format: "SELF MATCHES %@", zipPattern)
-        guard zipPredicate.evaluate(with: zipCode) else {
-            throw ValidationError.invalidFormat("address.zipCode must be in format 12345 or 12345-6789")
+        // Validate postal code (international format support)
+        let postalPattern = "^[A-Za-z0-9][A-Za-z0-9\\s\\-]{1,8}[A-Za-z0-9]$"
+        let postalPredicate = NSPredicate(format: "SELF MATCHES %@", postalPattern)
+        guard postalPredicate.evaluate(with: postalCode) else {
+            throw ValidationError.invalidFormat("Please enter a valid postal code")
         }
         
         // Validate country

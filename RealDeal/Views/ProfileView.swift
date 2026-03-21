@@ -282,10 +282,10 @@ struct ProfileView_Previews: PreviewProvider {
             name: "John Doe",
             email: "john@example.com",
             phoneNumber: "+1234567890",
-            role: .seller,
+            role: .agent,
             visibilitySettings: ProfileVisibility(showEmail: true, showPhone: true, showListings: true)
         )
-        
+
         return NavigationView {
             ProfileView(viewModel: viewModel, isOwnProfile: true)
         }

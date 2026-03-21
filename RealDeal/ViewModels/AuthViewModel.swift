@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import AuthenticationServices
+import CryptoKit
 
 /// ViewModel managing authentication state and user interactions
 @MainActor
@@ -24,12 +26,14 @@ class AuthViewModel: ObservableObject {
     @Published var registerConfirmPassword: String = ""
     @Published var registerPhoneNumber: String = ""
     @Published var registerRole: UserRole = .buyer
-    
+    @Published var registerLicenseNumber: String = ""
+
     // Validation
     @Published var emailValidationError: String?
     @Published var passwordValidationError: String?
     @Published var nameValidationError: String?
     @Published var confirmPasswordError: String?
+    @Published var licenseNumberValidationError: String?
     
     // MARK: - Properties
     
@@ -173,6 +177,7 @@ class AuthViewModel: ObservableObject {
                 email: registerEmail,
                 phoneNumber: registerPhoneNumber.isEmpty ? nil : registerPhoneNumber,
                 role: registerRole,
+                licenseNumber: registerRole == .agent ? registerLicenseNumber : nil,
                 visibilitySettings: ProfileVisibility()
             )
             
@@ -208,6 +213,105 @@ class AuthViewModel: ObservableObject {
         await signUp()
     }
     
+    // MARK: - Social Sign In
+
+    /// Nonce used for the current Apple Sign In request (stored so it can be verified)
+    private(set) var currentNonce: String?
+
+    /// Generate a random nonce and store it for verification
+    func prepareAppleSignIn() -> String {
+        let nonce = randomNonce()
+        currentNonce = nonce
+        return sha256(nonce)
+    }
+
+    /// Complete Apple Sign In after receiving the authorization credential
+    func handleAppleSignIn(result: Result<ASAuthorization, Error>) async {
+        isLoading = true
+        errorMessage = nil
+        error = nil
+
+        switch result {
+        case .success(let authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData = credential.identityToken,
+                let identityToken = String(data: tokenData, encoding: .utf8),
+                let nonce = currentNonce
+            else {
+                errorMessage = "Apple Sign In failed — invalid credential"
+                isLoading = false
+                return
+            }
+
+            let fullName: String? = {
+                guard let name = credential.fullName else { return nil }
+                return [name.givenName, name.familyName].compactMap { $0 }.joined(separator: " ")
+            }()
+
+            do {
+                _ = try await authService.signInWithApple(
+                    identityToken: identityToken,
+                    nonce: nonce,
+                    fullName: fullName,
+                    email: credential.email
+                )
+                currentUser = authService.currentUser
+                isAuthenticated = true
+            } catch let appError as AppError {
+                error = appError
+                errorMessage = appError.userMessage
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+
+        case .failure(let err):
+            // ASAuthorizationError.canceled (1001) means the user tapped cancel — not an error
+            if (err as? ASAuthorizationError)?.code != .canceled {
+                errorMessage = err.localizedDescription
+            }
+        }
+
+        isLoading = false
+        currentNonce = nil
+    }
+
+    /// Sign in with a Google ID token (call after receiving the token from GoogleSignIn SDK)
+    func handleGoogleSignIn(idToken: String) async {
+        isLoading = true
+        errorMessage = nil
+        error = nil
+
+        do {
+            _ = try await authService.signInWithGoogle(idToken: idToken)
+            currentUser = authService.currentUser
+            isAuthenticated = true
+        } catch let appError as AppError {
+            error = appError
+            errorMessage = appError.userMessage
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isLoading = false
+    }
+
+    // MARK: - Nonce helpers (required by Apple Sign In spec)
+
+    private func randomNonce(length: Int = 32) -> String {
+        var randomBytes = [UInt8](repeating: 0, count: length)
+        let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        precondition(errorCode == errSecSuccess, "Unable to generate nonce")
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(randomBytes.map { charset[Int($0) % charset.count] })
+    }
+
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashed = SHA256.hash(data: inputData)
+        return hashed.compactMap { String(format: "%02x", $0) }.joined()
+    }
+
     /// Sign out current user
     func signOut() async {
         isLoading = true
@@ -265,7 +369,13 @@ class AuthViewModel: ObservableObject {
             confirmPasswordError = "Passwords do not match"
             isValid = false
         }
-        
+
+        // License number required for agents
+        if registerRole == .agent && registerLicenseNumber.trimmingCharacters(in: .whitespaces).isEmpty {
+            licenseNumberValidationError = "License number is required for agents"
+            isValid = false
+        }
+
         return isValid
     }
     
@@ -276,11 +386,13 @@ class AuthViewModel: ObservableObject {
         registerConfirmPassword = ""
         registerPhoneNumber = ""
         registerRole = .buyer
-        
+        registerLicenseNumber = ""
+
         nameValidationError = nil
         emailValidationError = nil
         passwordValidationError = nil
         confirmPasswordError = nil
+        licenseNumberValidationError = nil
     }
     
     // MARK: - Computed Properties

@@ -49,9 +49,8 @@ struct Property: Identifiable, Codable, Equatable, Hashable {
 struct Address: Codable, Equatable, Hashable {
     var street: String
     var city: String
-    var state: String
-    var zipCode: String?
-    var postalCode: String?
+    var province: String
+    var postalCode: String
     var country: String
 }
 

@@ -175,14 +175,14 @@ class AggregationService {
         // Normalize address components for comparison
         let normalizedStreet = property.address.street.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedCity = property.address.city.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedState = property.address.state.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedZip = property.address.zipCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+        let normalizedProvince = property.address.province.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedZip = property.address.postalCode.trimmingCharacters(in: .whitespacesAndNewlines)
+
         // Round coordinates to 4 decimal places (~11 meters precision)
         let roundedLat = String(format: "%.4f", property.location.latitude)
         let roundedLon = String(format: "%.4f", property.location.longitude)
-        
-        return "\(normalizedStreet)|\(normalizedCity)|\(normalizedState)|\(normalizedZip)|\(roundedLat)|\(roundedLon)"
+
+        return "\(normalizedStreet)|\(normalizedCity)|\(normalizedProvince)|\(normalizedZip)|\(roundedLat)|\(roundedLon)"
     }
     
     /// Resolve conflict among duplicate properties by selecting the highest priority source
