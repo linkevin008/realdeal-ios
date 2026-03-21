@@ -68,7 +68,7 @@ final class ModelValidationTests: XCTestCase {
                 street: "123 Main St",
                 city: "San Francisco",
                 province: "ON",
-                postalCode: "invalid",
+                postalCode: "!@#$%",
                 country: "USA"
             ),
             price: 500000,

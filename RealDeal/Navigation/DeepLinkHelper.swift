@@ -16,6 +16,7 @@ struct DeepLinkHelper {
     static func propertyDetailURL(propertyId: String) -> URL? {
         var components = URLComponents()
         components.scheme = scheme
+        components.host = ""
         components.path = "/property/\(propertyId)"
         return components.url
     }
@@ -28,6 +29,7 @@ struct DeepLinkHelper {
     static func profileURL(userId: String, isOwnProfile: Bool = false) -> URL? {
         var components = URLComponents()
         components.scheme = scheme
+        components.host = ""
         components.path = "/profile/\(userId)"
         if isOwnProfile {
             components.queryItems = [URLQueryItem(name: "own", value: "true")]
@@ -40,6 +42,7 @@ struct DeepLinkHelper {
     static func propertyCreationURL() -> URL? {
         var components = URLComponents()
         components.scheme = scheme
+        components.host = ""
         components.path = "/create-property"
         return components.url
     }
