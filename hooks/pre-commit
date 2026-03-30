@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SIM_ID="F341C58B-1EEE-471D-97A7-630050D3FB6F"
+PROJECT="RealDeal.xcodeproj"
+
+echo "==> Building iOS app..."
+xcodebuild -project "$PROJECT" \
+    -scheme RealDeal \
+    -destination "platform=iOS Simulator,id=${SIM_ID}" \
+    -configuration Debug \
+    -derivedDataPath /tmp/realdeal-build \
+    build \
+    2>&1 | tail -5
+
+echo "==> OK"

@@ -52,7 +52,7 @@ extension APIError {
 final class APIClient {
     let baseURL: URL
     private let session: URLSession
-    private let keychainManager: KeychainManager
+    let keychainManager: KeychainManager
 
     static let decoder: JSONDecoder = {
         let d = JSONDecoder()

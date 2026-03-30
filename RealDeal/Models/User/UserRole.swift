@@ -3,13 +3,13 @@ import Foundation
 enum UserRole: String, Codable, CaseIterable {
     case buyer
     case agent      // Licensed real estate agent managing listings on behalf of clients
-    case homeowner  // FSBO (For Sale By Owner) — individual listing their own property
+    case homeowner  // Owner-listed — individual selling their own property
 
     var displayName: String {
         switch self {
         case .buyer: return "Buyer"
         case .agent: return "Agent"
-        case .homeowner: return "Homeowner (FSBO)"
+        case .homeowner: return "Owner"
         }
     }
 

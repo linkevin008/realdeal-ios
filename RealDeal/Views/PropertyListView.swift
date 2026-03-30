@@ -215,14 +215,26 @@ struct PropertyCardView: View {
                 }
                 .foregroundColor(.secondary)
                 
-                // Property type
-                Text(property.propertyType.rawValue.capitalized)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
-                    .cornerRadius(4)
+                // Property type + owner-listed badge
+                HStack(spacing: 6) {
+                    Text(property.propertyType.rawValue.capitalized)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundColor(.blue)
+                        .cornerRadius(4)
+
+                    if property.source == .userGenerated {
+                        Text("Owner Listed")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.green.opacity(0.1))
+                            .foregroundColor(.green)
+                            .cornerRadius(4)
+                    }
+                }
             }
             .padding(.horizontal, 4)
         }
