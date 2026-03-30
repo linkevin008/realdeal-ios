@@ -16,8 +16,8 @@ class MyListingsViewModel: ObservableObject {
     
     // MARK: - Properties
     
-    private let service: PropertyListingService
-    private let currentUserId: String
+    let service: PropertyListingService
+    let currentUserId: String
     
     // MARK: - Initialization
     

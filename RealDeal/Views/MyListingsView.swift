@@ -46,39 +46,21 @@ struct MyListingsView: View {
                 }
             }
             .sheet(isPresented: $showCreateProperty) {
-                // Create property sheet
-                if let service = (viewModel as? MyListingsViewModel).map({ _ in
-                    // Access service from viewModel - this is a workaround for preview
-                    // In production, pass service through environment or dependency injection
-                    PropertyListingService(
-                        repository: MockPropertyRepository(),
-                        imageStorage: MockImageStorage()
+                PropertyCreationView(
+                    viewModel: PropertyCreationViewModel(
+                        service: viewModel.service,
+                        currentUserId: viewModel.currentUserId
                     )
-                }) {
-                    PropertyCreationView(
-                        viewModel: PropertyCreationViewModel(
-                            service: service,
-                            currentUserId: "user123" // Replace with actual user ID
-                        )
-                    )
-                }
+                )
             }
             .sheet(item: $selectedProperty) { property in
-                // Edit property sheet
-                if let service = (viewModel as? MyListingsViewModel).map({ _ in
-                    PropertyListingService(
-                        repository: MockPropertyRepository(),
-                        imageStorage: MockImageStorage()
+                PropertyCreationView(
+                    viewModel: PropertyCreationViewModel(
+                        service: viewModel.service,
+                        currentUserId: viewModel.currentUserId,
+                        property: property
                     )
-                }) {
-                    PropertyCreationView(
-                        viewModel: PropertyCreationViewModel(
-                            service: service,
-                            currentUserId: "user123", // Replace with actual user ID
-                            property: property
-                        )
-                    )
-                }
+                )
             }
             .alert("Delete Property", isPresented: $showDeleteAlert) {
                 Button("Cancel", role: .cancel) {
