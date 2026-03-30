@@ -4,7 +4,7 @@ import SwiftUI
 struct ContentView: View {
     // MARK: - Data layer (shared across the app)
     private let localDataSource: LocalDataSource
-    private let mockRemoteDataSource: MockRemoteDataSource
+    private let remoteDataSource: APIRemoteDataSource
     private let propertyRepository: PropertyRepository
     private let userProfileRepository: UserProfileRepository
     private let favoritesRepository: FavoritesRepository
@@ -15,7 +15,8 @@ struct ContentView: View {
 
     init() {
         let localDS = LocalDataSource(persistenceController: PersistenceController.shared)
-        let remoteDS = MockRemoteDataSource()
+        let apiClient = APIClient(baseURL: URL(string: "http://localhost:8080")!)
+        let remoteDS = APIRemoteDataSource(client: apiClient)
 
         let propRepo = PropertyRepository(
             localDataSource: localDS,
@@ -26,14 +27,14 @@ struct ContentView: View {
         let favRepo  = FavoritesRepository(localDataSource: localDS, remoteDataSource: remoteDS)
 
         self.localDataSource        = localDS
-        self.mockRemoteDataSource   = remoteDS
+        self.remoteDataSource       = remoteDS
         self.propertyRepository     = propRepo
         self.userProfileRepository  = userRepo
         self.favoritesRepository    = favRepo
         self.propertyListingService = PropertyListingService(repository: propRepo)
 
         let authService = AuthenticationService(
-            backendAuth: MockAuthenticationService(),
+            backendAuth: APIAuthenticationService(client: apiClient),
             userProfileRepository: userRepo
         )
         _authViewModel = StateObject(wrappedValue: AuthViewModel(authService: authService))

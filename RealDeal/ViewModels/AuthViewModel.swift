@@ -370,12 +370,6 @@ class AuthViewModel: ObservableObject {
             isValid = false
         }
 
-        // License number required for agents
-        if registerRole == .agent && registerLicenseNumber.trimmingCharacters(in: .whitespaces).isEmpty {
-            licenseNumberValidationError = "License number is required for agents"
-            isValid = false
-        }
-
         return isValid
     }
     

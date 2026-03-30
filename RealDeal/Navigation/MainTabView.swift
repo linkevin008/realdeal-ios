@@ -118,16 +118,15 @@ struct MainTabView: View {
 
             // Profile Tab
             NavigationStack(path: $coordinator.profileNavigationPath) {
-                if authViewModel.isAuthenticated {
-                    ProfileView(
-                        viewModel: ProfileViewModel(repository: userProfileRepository),
-                        isOwnProfile: true
-                    )
-                    .navigationDestination(for: NavigationCoordinator.Destination.self) { destination in
-                        destinationView(for: destination)
-                    }
+                if authViewModel.isAuthenticated, let userId = authViewModel.currentUser?.id {
+                    let vm = ProfileViewModel(repository: userProfileRepository)
+                    ProfileView(viewModel: vm, isOwnProfile: true)
+                        .task { await vm.loadProfile(userId: userId) }
+                        .navigationDestination(for: NavigationCoordinator.Destination.self) { destination in
+                            destinationView(for: destination)
+                        }
                 } else {
-                    signInPromptView
+                    LoginView(viewModel: authViewModel)
                 }
             }
             .tabItem {
