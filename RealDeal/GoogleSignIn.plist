@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Replace REPLACE_WITH_YOUR_REVERSED_CLIENT_ID with the reversed form of your
+         Google OAuth Client ID. If your client ID is 123-abc.apps.googleusercontent.com,
+         the reversed form is com.googleusercontent.apps.123-abc -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>REPLACE_WITH_YOUR_REVERSED_CLIENT_ID</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

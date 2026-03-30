@@ -6,6 +6,25 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin XCRemoteSwiftPackageReference section */
+		AA00010A2EDEAF38000F106D /* GoogleSignIn-iOS */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA00010B2EDEAF38000F106D /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA00010A2EDEAF38000F106D /* GoogleSignIn-iOS */;
+			productName = GoogleSignIn;
+		};
+/* End XCSwiftPackageProductDependency section */
+
 /* Begin PBXContainerItemProxy section */
 		7690719E2EDEAF39000F106D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -106,6 +125,7 @@
 			);
 			name = RealDeal;
 			packageProductDependencies = (
+				AA00010B2EDEAF38000F106D /* GoogleSignIn */,
 			);
 			productName = RealDeal;
 			productReference = 7690718A2EDEAF38000F106D /* RealDeal.app */;
@@ -187,6 +207,9 @@
 			mainGroup = 769071812EDEAF38000F106D;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			packageReferences = (
+				AA00010A2EDEAF38000F106D /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			productRefGroup = 7690718B2EDEAF38000F106D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -388,6 +411,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RealDeal/GoogleSignIn.plist;
+				INFOPLIST_KEY_GIDClientID = "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RealDeal uses your location to show nearby properties and filter search results.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -428,6 +453,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RealDeal/GoogleSignIn.plist;
+				INFOPLIST_KEY_GIDClientID = "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RealDeal uses your location to show nearby properties and filter search results.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
