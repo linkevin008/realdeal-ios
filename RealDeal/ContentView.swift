@@ -48,6 +48,9 @@ struct ContentView: View {
             favoritesRepository: favoritesRepository,
             propertyListingService: propertyListingService
         )
+        .task {
+            await authViewModel.restoreSessionIfNeeded()
+        }
     }
 }
 

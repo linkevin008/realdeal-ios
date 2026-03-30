@@ -44,13 +44,23 @@ class AuthViewModel: ObservableObject {
     
     init(authService: AuthenticationServiceProtocol) {
         self.authService = authService
-        
+
         // Initialize with current user if available
         self.currentUser = authService.currentUser
         self.isAuthenticated = authService.currentUser != nil
-        
+
         // Set up validation
         setupValidation()
+    }
+
+    /// Call on app launch to repopulate auth state from a saved Keychain token.
+    func restoreSessionIfNeeded() async {
+        guard !isAuthenticated else { return }
+        if let service = authService as? AuthenticationService {
+            await service.restoreSession()
+        }
+        currentUser = authService.currentUser
+        isAuthenticated = authService.currentUser != nil
     }
     
     // MARK: - Validation Setup

@@ -9,6 +9,15 @@ final class APIAuthenticationService: AuthenticationServiceProtocol {
         self.client = client
     }
 
+    /// Fetch and populate currentUser from the API using the stored token.
+    /// Call this on launch after restoring a token from Keychain.
+    func restoreCurrentUser() async {
+        guard let token = try? client.keychainManager.retrieveToken(),
+              token.expiresAt > Date() else { return }
+        let envelope = try? await client.get("api/v1/users/me", requiresAuth: true) as Envelope<APIUser>
+        currentUser = envelope.map { UserProfile(apiUser: $0.data) }
+    }
+
     // MARK: - AuthenticationServiceProtocol
 
     func signIn(email: String, password: String) async throws -> AuthToken {

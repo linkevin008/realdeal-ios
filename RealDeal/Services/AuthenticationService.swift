@@ -24,10 +24,7 @@ class AuthenticationService: AuthenticationServiceProtocol {
         self.keychainManager = keychainManager
         self.userProfileRepository = userProfileRepository
         
-        // Attempt to restore session on initialization
-        Task {
-            await restoreSession()
-        }
+        // Session restore is triggered explicitly via restoreSession() from AuthViewModel
     }
     
     // MARK: - AuthenticationServiceProtocol
@@ -148,7 +145,7 @@ class AuthenticationService: AuthenticationServiceProtocol {
     // MARK: - Session Management
     
     /// Attempt to restore session from keychain
-    private func restoreSession() async {
+    func restoreSession() async {
         do {
             guard let token = try keychainManager.retrieveToken() else {
                 return
@@ -169,6 +166,9 @@ class AuthenticationService: AuthenticationServiceProtocol {
             }
             
             // Try to load user profile from backend
+            if let api = backendAuth as? APIAuthenticationService {
+                await api.restoreCurrentUser()
+            }
             currentUser = backendAuth.currentUser
         } catch {
             // Failed to restore session, user will need to sign in again
