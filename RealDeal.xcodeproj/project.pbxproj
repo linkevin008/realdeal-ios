@@ -411,7 +411,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = RealDeal/GoogleSignIn.plist;
+				INFOPLIST_FILE = GoogleSignIn.plist;
 				INFOPLIST_KEY_GIDClientID = "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RealDeal uses your location to show nearby properties and filter search results.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -453,7 +453,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = RealDeal/GoogleSignIn.plist;
+				INFOPLIST_FILE = GoogleSignIn.plist;
 				INFOPLIST_KEY_GIDClientID = "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RealDeal uses your location to show nearby properties and filter search results.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
