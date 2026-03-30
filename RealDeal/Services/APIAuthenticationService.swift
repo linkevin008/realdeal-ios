@@ -73,11 +73,36 @@ final class APIAuthenticationService: AuthenticationServiceProtocol {
     }
 
     func signInWithApple(identityToken: String, nonce: String, fullName: String?, email: String?) async throws -> AuthToken {
-        throw APIError.notSupported
+        struct Body: Encodable {
+            let identityToken: String
+            let nonce: String
+            let fullName: String?
+            let email: String?
+        }
+        do {
+            let envelope: Envelope<AuthData> = try await client.post(
+                "api/v1/auth/signin/apple",
+                body: Body(identityToken: identityToken, nonce: nonce, fullName: fullName, email: email)
+            )
+            currentUser = envelope.data.user.map(UserProfile.init(apiUser:))
+            return envelope.data.asAuthToken()
+        } catch let error as APIError {
+            throw error.asAppError
+        }
     }
 
     func signInWithGoogle(idToken: String) async throws -> AuthToken {
-        throw APIError.notSupported
+        struct Body: Encodable { let idToken: String }
+        do {
+            let envelope: Envelope<AuthData> = try await client.post(
+                "api/v1/auth/signin/google",
+                body: Body(idToken: idToken)
+            )
+            currentUser = envelope.data.user.map(UserProfile.init(apiUser:))
+            return envelope.data.asAuthToken()
+        } catch let error as APIError {
+            throw error.asAppError
+        }
     }
 }
 

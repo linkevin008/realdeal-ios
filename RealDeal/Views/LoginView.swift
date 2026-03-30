@@ -160,20 +160,21 @@ struct LoginView: View {
     }
 
     // MARK: - Google Sign In
+    // To enable: Add the GoogleSignIn-iOS package in Xcode (File → Add Package Dependencies)
+    // URL: https://github.com/google/GoogleSignIn-iOS
+    // Then add your CLIENT_ID to Info.plist as GIDClientID.
 
     private func googleSignIn() {
-        // TODO: Wire up GoogleSignIn SDK.
-        // 1. Add package: https://github.com/google/GoogleSignIn-iOS (SPM)
-        // 2. Configure in Info.plist with your CLIENT_ID from Google Cloud Console.
-        // 3. Replace this stub with:
-        //
-        //    guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-        //          let rootVC = scene.windows.first?.rootViewController else { return }
-        //    GIDSignIn.sharedInstance.signIn(withPresenting: rootVC) { result, error in
-        //        guard let idToken = result?.user.idToken?.tokenString else { return }
-        //        Task { await viewModel.handleGoogleSignIn(idToken: idToken) }
-        //    }
-        viewModel.errorMessage = "Google Sign In: add the GoogleSignIn SDK to enable this."
+        #if canImport(GoogleSignIn)
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = scene.windows.first?.rootViewController else { return }
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootVC) { result, error in
+            guard error == nil, let idToken = result?.user.idToken?.tokenString else { return }
+            Task { await viewModel.handleGoogleSignIn(idToken: idToken) }
+        }
+        #else
+        viewModel.errorMessage = "Google Sign In requires the GoogleSignIn SDK. See LoginView for setup instructions."
+        #endif
     }
 }
 
