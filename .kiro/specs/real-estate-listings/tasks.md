@@ -83,7 +83,7 @@
   - **Property 20: Invalid credentials are rejected**
   - **Validates: Requirements 6.2**
 
-- [-] 6.3 Write property test for registration validation
+- [x] 6.3 Write property test for registration validation
   - **Property 21: Registration validation enforcement**
   - **Validates: Requirements 6.3**
 
