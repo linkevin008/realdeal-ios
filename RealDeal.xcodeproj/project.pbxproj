@@ -15,6 +15,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		BB00010A2EDEAF38000F106D /* SwiftCheck */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/typelift/SwiftCheck.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.12.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -22,6 +30,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AA00010A2EDEAF38000F106D /* GoogleSignIn-iOS */;
 			productName = GoogleSignIn;
+		};
+		BB00010B2EDEAF38000F106D /* SwiftCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB00010A2EDEAF38000F106D /* SwiftCheck */;
+			productName = SwiftCheck;
 		};
 /* End XCSwiftPackageProductDependency section */
 
@@ -149,6 +162,7 @@
 			);
 			name = RealDealTests;
 			packageProductDependencies = (
+				BB00010B2EDEAF38000F106D /* SwiftCheck */,
 			);
 			productName = RealDealTests;
 			productReference = 7690719D2EDEAF39000F106D /* RealDealTests.xctest */;
@@ -209,6 +223,7 @@
 			preferredProjectObjectVersion = 77;
 			packageReferences = (
 				AA00010A2EDEAF38000F106D /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				BB00010A2EDEAF38000F106D /* XCRemoteSwiftPackageReference "SwiftCheck" */,
 			);
 			productRefGroup = 7690718B2EDEAF38000F106D /* Products */;
 			projectDirPath = "";

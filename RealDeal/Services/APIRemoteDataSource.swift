@@ -3,11 +3,13 @@ import Foundation
 @available(iOS 15.0, macOS 12.0, *)
 final class APIRemoteDataSource: RemoteDataSourceProtocol {
     private let client: APIClient
+    private let imageStorage: APIImageStorage
     // Maps favorite.id → (userId, propertyId) so removeFavorite can call the right endpoint
     private var favoriteIndex: [String: (userId: String, propertyId: String)] = [:]
 
     init(client: APIClient) {
         self.client = client
+        self.imageStorage = APIImageStorage(client: client)
     }
 
     // MARK: - Properties
@@ -130,14 +132,14 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
         favoriteIndex.removeValue(forKey: id)
     }
 
-    // MARK: - Images (not supported by this backend)
+    // MARK: - Images
 
     func uploadImage(_ imageData: Data, path: String) async throws -> URL {
-        throw APIError.notSupported
+        try await imageStorage.uploadImage(imageData, path: path)
     }
 
     func deleteImage(url: URL) async throws {
-        throw APIError.notSupported
+        try await imageStorage.deleteImage(url: url)
     }
 }
 

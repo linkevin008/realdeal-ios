@@ -1,7 +1,8 @@
 SCHEME        = RealDeal
 PROJECT       = RealDeal.xcodeproj
-SIMULATOR     = iPhone 16 Pro
-DESTINATION   = platform=iOS Simulator,name=$(SIMULATOR)
+SIMULATOR     = iPhone 17 Pro
+OS_VERSION    = 26.4.1
+DESTINATION   = platform=iOS Simulator,name=$(SIMULATOR),OS=$(OS_VERSION)
 APP_BUNDLE_ID = com.kevil.RealDeal
 BUILD_DIR     = $(shell xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination "$(DESTINATION)" -showBuildSettings 2>/dev/null | grep " BUILT_PRODUCTS_DIR" | awk '{print $$3}')
 APP_PATH      = $(BUILD_DIR)/$(SCHEME).app

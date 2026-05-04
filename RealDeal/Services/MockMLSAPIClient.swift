@@ -184,6 +184,21 @@ class MockMLSAPIClient: ExternalListingAPIProtocol {
                 squareFeet: 1100,
                 latitude: 49.2812,
                 longitude: -123.1213
+            ),
+            createListing(
+                id: "MLS-006",
+                street: "123 Oak Street",
+                city: "Toronto",
+                province: "ON",
+                postalCode: "M5H 1J9",
+                price: 1400000,
+                propertyType: "house",
+                description: "Charming detached home on a quiet street in downtown Toronto",
+                bedrooms: 3,
+                bathrooms: 2.0,
+                squareFeet: 1800,
+                latitude: 37.7749,
+                longitude: -122.4194
             )
         ]
     }

@@ -46,12 +46,20 @@ extension APIError {
     }
 }
 
+// MARK: - URLSession Protocol
+
+protocol URLSessionProtocol {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
+}
+
+extension URLSession: URLSessionProtocol {}
+
 // MARK: - API Client
 
 @available(iOS 15.0, macOS 12.0, *)
 final class APIClient {
     let baseURL: URL
-    private let session: URLSession
+    private let session: any URLSessionProtocol
     let keychainManager: KeychainManager
 
     static let decoder: JSONDecoder = {
@@ -85,6 +93,13 @@ final class APIClient {
         self.baseURL = baseURL
         self.keychainManager = keychainManager
         self.session = URLSession.shared
+    }
+
+    /// Initializer that accepts a URLSessionProtocol — intended for unit tests that inject a spy session.
+    init(baseURL: URL, keychainManager: KeychainManager = .shared, session: any URLSessionProtocol) {
+        self.baseURL = baseURL
+        self.keychainManager = keychainManager
+        self.session = session
     }
 
     func get<T: Decodable>(_ path: String, queryItems: [URLQueryItem] = [], requiresAuth: Bool = false) async throws -> T {

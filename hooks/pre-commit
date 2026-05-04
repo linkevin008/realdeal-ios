@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SIM_ID="F341C58B-1EEE-471D-97A7-630050D3FB6F"
+SIM_NAME="iPhone 17 Pro"
+OS_VERSION="26.4.1"
 PROJECT="RealDeal.xcodeproj"
 
 echo "==> Building iOS app..."
 xcodebuild -project "$PROJECT" \
     -scheme RealDeal \
-    -destination "platform=iOS Simulator,id=${SIM_ID}" \
+    -destination "platform=iOS Simulator,name=${SIM_NAME},OS=${OS_VERSION}" \
     -configuration Debug \
     -derivedDataPath /tmp/realdeal-build \
     build \
