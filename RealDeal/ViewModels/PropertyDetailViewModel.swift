@@ -14,13 +14,16 @@ class PropertyDetailViewModel: ObservableObject {
     @Published var selectedImageIndex: Int = 0
     @Published var isShowingFullScreenImage: Bool = false
     @Published var isFavorite: Bool = false
+    @Published var isShowingOfferSheet: Bool = false
+    @Published var myPendingOffer: Offer?
     
     // MARK: - Properties
     
     private let propertyRepository: PropertyRepositoryProtocol
     private let userProfileRepository: UserProfileRepositoryProtocol
     private let favoritesRepository: FavoritesRepositoryProtocol?
-    private let currentUserId: String?
+    let remoteDataSource: RemoteDataSourceProtocol?
+    let currentUserId: String?
     
     // MARK: - Initialization
     
@@ -29,13 +32,30 @@ class PropertyDetailViewModel: ObservableObject {
         propertyRepository: PropertyRepositoryProtocol,
         userProfileRepository: UserProfileRepositoryProtocol,
         favoritesRepository: FavoritesRepositoryProtocol? = nil,
+        remoteDataSource: RemoteDataSourceProtocol? = nil,
         currentUserId: String? = nil
     ) {
         self.property = property
         self.propertyRepository = propertyRepository
         self.userProfileRepository = userProfileRepository
         self.favoritesRepository = favoritesRepository
+        self.remoteDataSource = remoteDataSource
         self.currentUserId = currentUserId
+    }
+
+    var isSeller: Bool {
+        guard let uid = currentUserId, let sellerID = property.sellerId else { return false }
+        return uid == sellerID
+    }
+
+    func checkMyPendingOffer() async {
+        guard let remote = remoteDataSource, !isSeller else { return }
+        do {
+            let myOffers = try await remote.fetchMyOffers()
+            myPendingOffer = myOffers.first { $0.propertyId == property.id && $0.status == .pending }
+        } catch {
+            // Non-critical
+        }
     }
     
     // MARK: - Actions

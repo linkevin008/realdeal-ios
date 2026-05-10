@@ -18,12 +18,14 @@ class MyListingsViewModel: ObservableObject {
     
     let service: PropertyListingService
     let currentUserId: String
-    
+    let remoteDataSource: RemoteDataSourceProtocol
+
     // MARK: - Initialization
-    
-    init(service: PropertyListingService, currentUserId: String) {
+
+    init(service: PropertyListingService, currentUserId: String, remoteDataSource: RemoteDataSourceProtocol = MockRemoteDataSource(simulateNetworkDelay: false)) {
         self.service = service
         self.currentUserId = currentUserId
+        self.remoteDataSource = remoteDataSource
     }
     
     // MARK: - Actions

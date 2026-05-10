@@ -46,7 +46,8 @@ struct ContentView: View {
             propertyRepository: propertyRepository,
             userProfileRepository: userProfileRepository,
             favoritesRepository: favoritesRepository,
-            propertyListingService: propertyListingService
+            propertyListingService: propertyListingService,
+            remoteDataSource: remoteDataSource
         )
         .task {
             await authViewModel.restoreSessionIfNeeded()

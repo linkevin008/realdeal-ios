@@ -10,6 +10,7 @@ struct MainTabView: View {
     private let userProfileRepository: UserProfileRepository
     private let favoritesRepository: FavoritesRepository
     private let propertyListingService: PropertyListingService
+    private let remoteDataSource: RemoteDataSourceProtocol
 
     @StateObject private var coordinator: NavigationCoordinator
 
@@ -18,13 +19,15 @@ struct MainTabView: View {
         propertyRepository: PropertyRepository,
         userProfileRepository: UserProfileRepository,
         favoritesRepository: FavoritesRepository,
-        propertyListingService: PropertyListingService
+        propertyListingService: PropertyListingService,
+        remoteDataSource: RemoteDataSourceProtocol = MockRemoteDataSource(simulateNetworkDelay: false)
     ) {
         self.authViewModel = authViewModel
         self.propertyRepository = propertyRepository
         self.userProfileRepository = userProfileRepository
         self.favoritesRepository = favoritesRepository
         self.propertyListingService = propertyListingService
+        self.remoteDataSource = remoteDataSource
         _coordinator = StateObject(wrappedValue: NavigationCoordinator(propertyRepository: propertyRepository))
     }
 
@@ -98,7 +101,8 @@ struct MainTabView: View {
                     MyListingsView(
                         viewModel: MyListingsViewModel(
                             service: propertyListingService,
-                            currentUserId: currentUserId
+                            currentUserId: currentUserId,
+                            remoteDataSource: remoteDataSource
                         )
                     )
                     .navigationDestination(for: NavigationCoordinator.Destination.self) { destination in

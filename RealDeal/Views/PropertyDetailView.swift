@@ -151,14 +151,62 @@ struct PropertyDetailView: View {
                 onPrevious: viewModel.previousImage
             )
         }
+        .sheet(isPresented: $viewModel.isShowingOfferSheet) {
+            if let remote = viewModel.remoteDataSource {
+                SubmitOfferView(
+                    viewModel: OfferViewModel(remoteDataSource: remote),
+                    propertyId: viewModel.property.id,
+                    listingPrice: Double(truncating: viewModel.property.price as NSDecimalNumber)
+                )
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if !viewModel.isSeller && viewModel.property.status == .active {
+                offerActionBar
+            }
+        }
         .task {
             await viewModel.loadSellerProfile()
             await viewModel.checkFavoriteStatus()
+            await viewModel.checkMyPendingOffer()
         }
         .refreshable {
             await viewModel.refreshProperty()
             await viewModel.loadSellerProfile()
             await viewModel.checkFavoriteStatus()
+            await viewModel.checkMyPendingOffer()
+        }
+    }
+
+    @ViewBuilder
+    private var offerActionBar: some View {
+        VStack(spacing: 0) {
+            Divider()
+            if viewModel.myPendingOffer != nil {
+                HStack {
+                    Image(systemName: "clock.fill")
+                        .foregroundColor(.orange)
+                    Text("Offer Pending")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.orange)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color(.systemBackground))
+            } else {
+                Button(action: { viewModel.isShowingOfferSheet = true }) {
+                    Text("Make Offer")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                }
+                .background(Color(.systemBackground))
+            }
         }
     }
 }

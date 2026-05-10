@@ -141,6 +141,59 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
     func deleteImage(url: URL) async throws {
         try await imageStorage.deleteImage(url: url)
     }
+
+    // MARK: - Offers
+
+    func submitOffer(propertyId: String, amount: Double, message: String?) async throws -> Offer {
+        struct Body: Encodable { let amount: Double; let message: String? }
+        let envelope: Envelope<APIOffer> = try await client.post(
+            "api/v1/properties/\(propertyId)/offers",
+            body: Body(amount: amount, message: message),
+            requiresAuth: true
+        )
+        return envelope.data.asOffer()
+    }
+
+    func fetchOffersForProperty(propertyId: String) async throws -> [Offer] {
+        let envelope: Envelope<[APIOffer]> = try await client.get(
+            "api/v1/properties/\(propertyId)/offers",
+            requiresAuth: true
+        )
+        return envelope.data.map { $0.asOffer() }
+    }
+
+    func acceptOffer(propertyId: String, offerId: String) async throws -> Offer {
+        let envelope: Envelope<APIOffer> = try await client.put(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)/accept",
+            body: EmptyBody(),
+            requiresAuth: true
+        )
+        return envelope.data.asOffer()
+    }
+
+    func rejectOffer(propertyId: String, offerId: String) async throws -> Offer {
+        let envelope: Envelope<APIOffer> = try await client.put(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)/reject",
+            body: EmptyBody(),
+            requiresAuth: true
+        )
+        return envelope.data.asOffer()
+    }
+
+    func withdrawOffer(propertyId: String, offerId: String) async throws {
+        try await client.delete(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)",
+            requiresAuth: true
+        )
+    }
+
+    func fetchMyOffers() async throws -> [Offer] {
+        let envelope: Envelope<[APIOffer]> = try await client.get(
+            "api/v1/users/me/offers",
+            requiresAuth: true
+        )
+        return envelope.data.map { $0.asOffer() }
+    }
 }
 
 // MARK: - Private DTOs
@@ -224,6 +277,42 @@ private struct APIUser: Decodable {
     let showPhone: Bool
     let showListings: Bool
     let createdAt: Date
+}
+
+private struct EmptyBody: Encodable {}
+
+private struct APIOffer: Decodable {
+    let id: String
+    let propertyId: String
+    let buyerId: String
+    let amount: Double
+    let message: String?
+    let status: String
+    let createdAt: Date
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, amount, message, status
+        case propertyId = "property_id"
+        case buyerId = "buyer_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    func asOffer() -> Offer {
+        Offer(
+            id: id,
+            propertyId: propertyId,
+            buyerId: buyerId,
+            amount: amount,
+            message: message,
+            status: OfferStatus(rawValue: status) ?? .pending,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            property: nil,
+            buyer: nil
+        )
+    }
 }
 
 private struct APIFavorite: Decodable {

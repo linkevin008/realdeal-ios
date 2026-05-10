@@ -9,6 +9,7 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
     private var userProfiles: [String: UserProfile] = [:]
     private var favorites: [String: Favorite] = [:]
     private var images: [URL: Data] = [:]
+    private var offers: [String: Offer] = [:]
     
     // MARK: - Configuration
     private let simulateNetworkDelay: Bool
@@ -221,14 +222,70 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
     
     func deleteImage(url: URL) async throws {
         await simulateDelay()
-        
+
         guard images[url] != nil else {
             throw MockDataSourceError.notFound
         }
-        
+
         images.removeValue(forKey: url)
     }
-    
+
+    // MARK: - Offers
+
+    func submitOffer(propertyId: String, amount: Double, message: String?) async throws -> Offer {
+        await simulateDelay()
+        let offer = Offer(
+            id: UUID().uuidString,
+            propertyId: propertyId,
+            buyerId: "mock-buyer",
+            amount: amount,
+            message: message,
+            status: .pending,
+            createdAt: Date(),
+            updatedAt: Date(),
+            property: properties[propertyId],
+            buyer: nil
+        )
+        offers[offer.id] = offer
+        return offer
+    }
+
+    func fetchOffersForProperty(propertyId: String) async throws -> [Offer] {
+        await simulateDelay()
+        return offers.values.filter { $0.propertyId == propertyId }
+    }
+
+    func acceptOffer(propertyId: String, offerId: String) async throws -> Offer {
+        await simulateDelay()
+        guard var offer = offers[offerId] else { throw MockDataSourceError.notFound }
+        offer = Offer(id: offer.id, propertyId: offer.propertyId, buyerId: offer.buyerId,
+                      amount: offer.amount, message: offer.message, status: .accepted,
+                      createdAt: offer.createdAt, updatedAt: Date(), property: offer.property, buyer: offer.buyer)
+        offers[offerId] = offer
+        return offer
+    }
+
+    func rejectOffer(propertyId: String, offerId: String) async throws -> Offer {
+        await simulateDelay()
+        guard var offer = offers[offerId] else { throw MockDataSourceError.notFound }
+        offer = Offer(id: offer.id, propertyId: offer.propertyId, buyerId: offer.buyerId,
+                      amount: offer.amount, message: offer.message, status: .rejected,
+                      createdAt: offer.createdAt, updatedAt: Date(), property: offer.property, buyer: offer.buyer)
+        offers[offerId] = offer
+        return offer
+    }
+
+    func withdrawOffer(propertyId: String, offerId: String) async throws {
+        await simulateDelay()
+        guard offers[offerId] != nil else { throw MockDataSourceError.notFound }
+        offers.removeValue(forKey: offerId)
+    }
+
+    func fetchMyOffers() async throws -> [Offer] {
+        await simulateDelay()
+        return Array(offers.values)
+    }
+
     // MARK: - Test Helpers
     
     /// Seed the mock data source with test data

@@ -8,6 +8,7 @@ struct MyListingsView: View {
     @State private var selectedProperty: Property?
     @State private var propertyToDelete: Property?
     @State private var showDeleteAlert = false
+    @State private var offersProperty: Property?
     
     var body: some View {
         NavigationView {
@@ -61,6 +62,14 @@ struct MyListingsView: View {
                         property: property
                     )
                 )
+            }
+            .sheet(item: $offersProperty) { property in
+                NavigationView {
+                    SellerOffersView(
+                        viewModel: SellerOffersViewModel(remoteDataSource: viewModel.remoteDataSource),
+                        property: property
+                    )
+                }
             }
             .alert("Delete Property", isPresented: $showDeleteAlert) {
                 Button("Cancel", role: .cancel) {
@@ -161,6 +170,14 @@ struct MyListingsView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         selectedProperty = property
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        Button {
+                            offersProperty = property
+                        } label: {
+                            Label("Offers", systemImage: "tag.fill")
+                        }
+                        .tint(.purple)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {

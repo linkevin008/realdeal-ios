@@ -20,4 +20,12 @@ protocol RemoteDataSourceProtocol {
     // Images
     func uploadImage(_ imageData: Data, path: String) async throws -> URL
     func deleteImage(url: URL) async throws
+
+    // Offers
+    func submitOffer(propertyId: String, amount: Double, message: String?) async throws -> Offer
+    func fetchOffersForProperty(propertyId: String) async throws -> [Offer]
+    func acceptOffer(propertyId: String, offerId: String) async throws -> Offer
+    func rejectOffer(propertyId: String, offerId: String) async throws -> Offer
+    func withdrawOffer(propertyId: String, offerId: String) async throws
+    func fetchMyOffers() async throws -> [Offer]
 }
