@@ -127,7 +127,8 @@ struct MainTabView: View {
                         repository: userProfileRepository,
                         userId: userId,
                         setupWizardActive: authViewModel.needsProfileSetup,
-                        onSetupProfile: { authViewModel.needsProfileSetup = true }
+                        onSetupProfile: { authViewModel.needsProfileSetup = true },
+                        onSignOut: { Task { await authViewModel.signOut() } }
                     )
                     .navigationDestination(for: NavigationCoordinator.Destination.self) { destination in
                         destinationView(for: destination)
@@ -265,22 +266,30 @@ private struct ProfileTab: View {
     let userId: String
     let setupWizardActive: Bool
     let onSetupProfile: () -> Void
+    let onSignOut: () -> Void
     @StateObject private var viewModel: ProfileViewModel
 
     init(
         repository: UserProfileRepository,
         userId: String,
         setupWizardActive: Bool,
-        onSetupProfile: @escaping () -> Void
+        onSetupProfile: @escaping () -> Void,
+        onSignOut: @escaping () -> Void
     ) {
         self.userId = userId
         self.setupWizardActive = setupWizardActive
         self.onSetupProfile = onSetupProfile
+        self.onSignOut = onSignOut
         _viewModel = StateObject(wrappedValue: ProfileViewModel(repository: repository))
     }
 
     var body: some View {
-        ProfileView(viewModel: viewModel, isOwnProfile: true, onSetupProfile: onSetupProfile)
+        ProfileView(
+            viewModel: viewModel,
+            isOwnProfile: true,
+            onSetupProfile: onSetupProfile,
+            onSignOut: onSignOut
+        )
             // Keyed on the wizard flag too: the tab loads while the setup wizard
             // covers it, so it must reload when the wizard dismisses or it would
             // keep showing the pre-wizard profile.

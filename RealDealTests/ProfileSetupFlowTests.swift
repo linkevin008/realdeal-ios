@@ -82,6 +82,21 @@ final class ProfileSetupFlowTests: XCTestCase {
         XCTAssertEqual(authViewModel.currentUser, userBefore)
     }
 
+    func testSignOutClearsProfileSetupFlag() async {
+        fillValidRegistrationForm()
+        await authViewModel.signUp()
+        XCTAssertTrue(authViewModel.needsProfileSetup)
+
+        await authViewModel.signOut()
+
+        XCTAssertFalse(authViewModel.isAuthenticated)
+        XCTAssertNil(authViewModel.currentUser)
+        XCTAssertFalse(
+            authViewModel.needsProfileSetup,
+            "Signing out mid-wizard must dismiss the setup wizard"
+        )
+    }
+
     func testSignInDoesNotTriggerProfileSetup() async {
         // Existing-account sign-in must not show the wizard
         fillValidRegistrationForm()

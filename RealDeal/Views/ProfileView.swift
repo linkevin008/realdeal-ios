@@ -11,6 +11,8 @@ struct ProfileView: View {
     /// Invoked from the empty state so a profile-less user can launch the
     /// setup wizard instead of hitting a dead end.
     var onSetupProfile: (() -> Void)? = nil
+    /// Signs the current user out (own profile only).
+    var onSignOut: (() -> Void)? = nil
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
@@ -162,6 +164,22 @@ struct ProfileView: View {
                 visibilitySettingsView(displayProfile)
             }
             
+            // Sign Out (only for own profile)
+            if isOwnProfile, let onSignOut {
+                Button {
+                    onSignOut()
+                } label: {
+                    Text("Sign Out")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.gray.opacity(0.2))
+                        .foregroundColor(.primary)
+                        .cornerRadius(10)
+                }
+                .disabled(viewModel.isLoading)
+            }
+
             // Delete Button (only for own profile)
             if isOwnProfile {
                 Button(role: .destructive) {

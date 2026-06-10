@@ -8,12 +8,19 @@
 - [x][P0] Implement buying functionality — offer submission and seller offer management
 - [x][P1] After sign-up, route new users to a "Complete Your Profile" onboarding flow instead of showing the "Profile Not Found" empty state — ProfileViewModel fetches from the repo independently of auth, so a brand new user lands on an empty state that looks like an error
 - [x][P1] Adopt the lookup service's /api/v1/search/properties endpoint for property browsing
+- [x][P1] Add sign-out UI — the app previously had no way to sign out anywhere
 - [ ][P2] Decide on color scheme and theme
 - [ ][P1] Implement legal consent form
 - [ ][P2] Do we want to implement a chat feature?
 - [ ][P1] Create informational walk through and explanation bubbles   
 
 # Context
+
+## Add sign-out UI 10-06-2026
+- `ProfileView`: "Sign Out" button on own profile (above Delete Profile), driven by an optional `onSignOut` closure; neutral styling vs. the destructive delete
+- `MainTabView`/`ProfileTab`: wires `onSignOut` to `authViewModel.signOut()`; after sign-out the Profile tab flips to `LoginView` via the existing `isAuthenticated` switch
+- `AuthViewModel.signOut()` now also clears `needsProfileSetup` so signing out mid-wizard dismisses it
+- Added `testSignOutClearsProfileSetupFlag` to ProfileSetupFlowTests
 
 ## Profile setup wizard after sign-up 10-06-2026
 - Created `RealDeal/Views/ProfileSetupView.swift`: 3-step onboarding wizard (About You → Your Role → Privacy) presented full-screen after account creation; Skip always available since the account already exists server-side; Finish PUTs via `ProfileViewModel.updateProfile()` and only dismisses on success

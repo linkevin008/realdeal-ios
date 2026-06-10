@@ -345,10 +345,11 @@ class AuthViewModel: ObservableObject {
         
         do {
             try await authService.signOut()
-            
+
             // Update state
             currentUser = nil
             isAuthenticated = false
+            needsProfileSetup = false
             
             // Clear forms
             loginEmail = ""
