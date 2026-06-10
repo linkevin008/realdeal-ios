@@ -123,12 +123,15 @@ struct MainTabView: View {
             // Profile Tab
             NavigationStack(path: $coordinator.profileNavigationPath) {
                 if authViewModel.isAuthenticated, let userId = authViewModel.currentUser?.id {
-                    let vm = ProfileViewModel(repository: userProfileRepository)
-                    ProfileView(viewModel: vm, isOwnProfile: true)
-                        .task { await vm.loadProfile(userId: userId) }
-                        .navigationDestination(for: NavigationCoordinator.Destination.self) { destination in
-                            destinationView(for: destination)
-                        }
+                    ProfileTab(
+                        repository: userProfileRepository,
+                        userId: userId,
+                        setupWizardActive: authViewModel.needsProfileSetup,
+                        onSetupProfile: { authViewModel.needsProfileSetup = true }
+                    )
+                    .navigationDestination(for: NavigationCoordinator.Destination.self) { destination in
+                        destinationView(for: destination)
+                    }
                 } else {
                     LoginView(viewModel: authViewModel)
                 }
@@ -146,6 +149,15 @@ struct MainTabView: View {
         .onOpenURL { url in
             coordinator.handleDeepLink(url: url)
         }
+        #if os(iOS)
+        .fullScreenCover(isPresented: $authViewModel.needsProfileSetup) {
+            ProfileSetupView(authViewModel: authViewModel, userProfileRepository: userProfileRepository)
+        }
+        #else
+        .sheet(isPresented: $authViewModel.needsProfileSetup) {
+            ProfileSetupView(authViewModel: authViewModel, userProfileRepository: userProfileRepository)
+        }
+        #endif
     }
 
     // MARK: - Auth-gated views
@@ -238,6 +250,41 @@ struct MainTabView: View {
         case .registration:
             RegistrationView(viewModel: authViewModel)
         }
+    }
+}
+
+// MARK: - Profile Tab
+
+/// Owns the ProfileViewModel as @StateObject so it survives MainTabView body
+/// re-evaluations. Previously the view model was created inline in body, so any
+/// published auth change replaced it with a fresh, never-loaded instance —
+/// which is why new users saw "Profile Not Found" even though their profile
+/// existed on the backend.
+@available(iOS 17.0, macOS 12.0, *)
+private struct ProfileTab: View {
+    let userId: String
+    let setupWizardActive: Bool
+    let onSetupProfile: () -> Void
+    @StateObject private var viewModel: ProfileViewModel
+
+    init(
+        repository: UserProfileRepository,
+        userId: String,
+        setupWizardActive: Bool,
+        onSetupProfile: @escaping () -> Void
+    ) {
+        self.userId = userId
+        self.setupWizardActive = setupWizardActive
+        self.onSetupProfile = onSetupProfile
+        _viewModel = StateObject(wrappedValue: ProfileViewModel(repository: repository))
+    }
+
+    var body: some View {
+        ProfileView(viewModel: viewModel, isOwnProfile: true, onSetupProfile: onSetupProfile)
+            // Keyed on the wizard flag too: the tab loads while the setup wizard
+            // covers it, so it must reload when the wizard dismisses or it would
+            // keep showing the pre-wizard profile.
+            .task(id: "\(userId)-\(setupWizardActive)") { await viewModel.loadProfile(userId: userId) }
     }
 }
 

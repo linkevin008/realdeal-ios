@@ -11,6 +11,9 @@ class AuthViewModel: ObservableObject {
     
     @Published var isAuthenticated: Bool = false
     @Published var currentUser: UserProfile?
+    /// True right after account creation — drives the "Complete Your Profile"
+    /// wizard. Cleared when the wizard finishes or is skipped.
+    @Published var needsProfileSetup: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var error: AppError?
@@ -203,7 +206,10 @@ class AuthViewModel: ObservableObject {
             // Update state
             currentUser = authService.currentUser
             isAuthenticated = true
-            
+            // Route brand-new accounts into the profile setup wizard instead of
+            // landing them on an empty profile screen
+            needsProfileSetup = true
+
             // Clear form
             clearRegistrationForm()
         } catch let appError as AppError {
@@ -221,6 +227,16 @@ class AuthViewModel: ObservableObject {
     /// Retry last sign up attempt
     func retrySignUp() async {
         await signUp()
+    }
+
+    /// Called when the profile setup wizard finishes or is skipped.
+    /// Passing the updated profile keeps `currentUser` in sync so the Profile
+    /// tab shows the freshly entered data without another fetch.
+    func completeProfileSetup(updatedProfile: UserProfile? = nil) {
+        if let updatedProfile {
+            currentUser = updatedProfile
+        }
+        needsProfileSetup = false
     }
     
     // MARK: - Social Sign In

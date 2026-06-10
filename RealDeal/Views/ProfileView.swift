@@ -8,7 +8,10 @@ struct ProfileView: View {
     @State private var showDeleteConfirmation = false
     
     let isOwnProfile: Bool
-    
+    /// Invoked from the empty state so a profile-less user can launch the
+    /// setup wizard instead of hitting a dead end.
+    var onSetupProfile: (() -> Void)? = nil
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
             VStack(spacing: 24) {
@@ -259,7 +262,7 @@ struct ProfileView: View {
     }
     
     private var emptyState: some View {
-        EmptyStateView.profileNotFound()
+        EmptyStateView.profileNotFound(onCreate: isOwnProfile ? onSetupProfile : nil)
     }
 }
 
