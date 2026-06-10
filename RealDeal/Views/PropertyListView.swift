@@ -130,10 +130,17 @@ struct PropertyCardView: View {
                         case .empty:
                             ImageLoadingPlaceholder(height: 200)
                         case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
+                            // Fixed-size container the image fills and is clipped to —
+                            // .fill without a width constraint would size the view to
+                            // the image's aspect ratio and bleed over neighboring cards
+                            Color.clear
+                                .frame(maxWidth: .infinity)
                                 .frame(height: 200)
+                                .overlay(
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                )
                                 .clipped()
                         case .failure:
                             Rectangle()
