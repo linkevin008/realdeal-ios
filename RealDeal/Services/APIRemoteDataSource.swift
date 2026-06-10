@@ -14,17 +14,20 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
 
     // MARK: - Properties
 
+    // Browse/search reads go to the lookup service (/api/v1/search/*); entity
+    // CRUD stays on core (/api/v1/properties).
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property] {
         var queryItems: [URLQueryItem] = []
         if let f = filters {
             if let v = f.priceMin {
-                queryItems.append(URLQueryItem(name: "price_min", value: "\(v)"))
+                queryItems.append(URLQueryItem(name: "min_price", value: "\(v)"))
             }
             if let v = f.priceMax {
-                queryItems.append(URLQueryItem(name: "price_max", value: "\(v)"))
+                queryItems.append(URLQueryItem(name: "max_price", value: "\(v)"))
             }
-            if let types = f.propertyTypes {
-                types.forEach { queryItems.append(URLQueryItem(name: "type", value: $0.rawValue)) }
+            if let types = f.propertyTypes, !types.isEmpty {
+                let joined = types.map { $0.rawValue }.sorted().joined(separator: ",")
+                queryItems.append(URLQueryItem(name: "property_type", value: joined))
             }
             if let lr = f.locationRadius {
                 queryItems.append(URLQueryItem(name: "lat", value: "\(lr.center.latitude)"))
@@ -32,20 +35,21 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
                 queryItems.append(URLQueryItem(name: "radius_miles", value: "\(lr.radiusInMiles)"))
             }
             if let v = f.minBedrooms {
-                queryItems.append(URLQueryItem(name: "bedrooms_min", value: "\(v)"))
+                queryItems.append(URLQueryItem(name: "beds", value: "\(v)"))
             }
             if let v = f.minBathrooms {
-                queryItems.append(URLQueryItem(name: "bathrooms_min", value: "\(v)"))
+                queryItems.append(URLQueryItem(name: "baths", value: "\(v)"))
             }
-            if let sources = f.sources {
-                sources.forEach { queryItems.append(URLQueryItem(name: "source", value: $0.apiValue)) }
+            if let sources = f.sources, !sources.isEmpty {
+                let joined = sources.map { $0.apiValue }.sorted().joined(separator: ",")
+                queryItems.append(URLQueryItem(name: "source", value: joined))
             }
             if let v = f.sellerId {
                 queryItems.append(URLQueryItem(name: "seller_id", value: v))
             }
         }
         let envelope: ListEnvelope<APIProperty> = try await client.get(
-            "api/v1/properties",
+            "api/v1/search/properties",
             queryItems: queryItems
         )
         return envelope.data.map { $0.asProperty() }

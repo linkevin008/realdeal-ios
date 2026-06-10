@@ -18,10 +18,12 @@ struct ContentView: View {
         let apiClient = APIClient(baseURL: URL(string: "http://localhost:8080")!)
         let remoteDS = APIRemoteDataSource(client: apiClient)
 
+        // creaDataSource intentionally nil: browse fetches real listings from the
+        // backend (lookup service via /api/v1/search) instead of the mock MLS feed.
         let propRepo = PropertyRepository(
             localDataSource: localDS,
             remoteDataSource: remoteDS,
-            creaDataSource: MockCREADataSource(simulateNetworkDelay: false)
+            creaDataSource: nil
         )
         let userRepo = UserProfileRepository(localDataSource: localDS, remoteDataSource: remoteDS)
         let favRepo  = FavoritesRepository(localDataSource: localDS, remoteDataSource: remoteDS)
