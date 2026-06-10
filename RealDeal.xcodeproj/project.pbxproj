@@ -46,19 +46,11 @@
 			remoteGlobalIDString = 769071892EDEAF38000F106D;
 			remoteInfo = RealDeal;
 		};
-		769071A82EDEAF39000F106D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 769071822EDEAF38000F106D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 769071892EDEAF38000F106D;
-			remoteInfo = RealDeal;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		7690718A2EDEAF38000F106D /* RealDeal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RealDeal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7690719D2EDEAF39000F106D /* RealDealTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RealDealTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		769071A72EDEAF39000F106D /* RealDealUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RealDealUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -89,13 +81,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		769071A42EDEAF39000F106D /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -113,7 +98,6 @@
 			children = (
 				7690718A2EDEAF38000F106D /* RealDeal.app */,
 				7690719D2EDEAF39000F106D /* RealDealTests.xctest */,
-				769071A72EDEAF39000F106D /* RealDealUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -168,26 +152,6 @@
 			productReference = 7690719D2EDEAF39000F106D /* RealDealTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		769071A62EDEAF39000F106D /* RealDealUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 769071B72EDEAF39000F106D /* Build configuration list for PBXNativeTarget "RealDealUITests" */;
-			buildPhases = (
-				769071A32EDEAF39000F106D /* Sources */,
-				769071A42EDEAF39000F106D /* Frameworks */,
-				769071A52EDEAF39000F106D /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				769071A92EDEAF39000F106D /* PBXTargetDependency */,
-			);
-			name = RealDealUITests;
-			packageProductDependencies = (
-			);
-			productName = RealDealUITests;
-			productReference = 769071A72EDEAF39000F106D /* RealDealUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -202,10 +166,6 @@
 						CreatedOnToolsVersion = 16.3;
 					};
 					7690719C2EDEAF39000F106D = {
-						CreatedOnToolsVersion = 16.3;
-						TestTargetID = 769071892EDEAF38000F106D;
-					};
-					769071A62EDEAF39000F106D = {
 						CreatedOnToolsVersion = 16.3;
 						TestTargetID = 769071892EDEAF38000F106D;
 					};
@@ -231,7 +191,6 @@
 			targets = (
 				769071892EDEAF38000F106D /* RealDeal */,
 				7690719C2EDEAF39000F106D /* RealDealTests */,
-				769071A62EDEAF39000F106D /* RealDealUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -245,13 +204,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7690719B2EDEAF39000F106D /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		769071A52EDEAF39000F106D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -275,13 +227,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		769071A32EDEAF39000F106D /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -289,11 +234,6 @@
 			isa = PBXTargetDependency;
 			target = 769071892EDEAF38000F106D /* RealDeal */;
 			targetProxy = 7690719E2EDEAF39000F106D /* PBXContainerItemProxy */;
-		};
-		769071A92EDEAF39000F106D /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 769071892EDEAF38000F106D /* RealDeal */;
-			targetProxy = 769071A82EDEAF39000F106D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -544,50 +484,6 @@
 			};
 			name = Release;
 		};
-		769071B82EDEAF39000F106D /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 468U62443D;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kevil.RealDealUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = RealDeal;
-				XROS_DEPLOYMENT_TARGET = 2.4;
-			};
-			name = Debug;
-		};
-		769071B92EDEAF39000F106D /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 468U62443D;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kevil.RealDealUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = RealDeal;
-				XROS_DEPLOYMENT_TARGET = 2.4;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -614,15 +510,6 @@
 			buildConfigurations = (
 				769071B52EDEAF39000F106D /* Debug */,
 				769071B62EDEAF39000F106D /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		769071B72EDEAF39000F106D /* Build configuration list for PBXNativeTarget "RealDealUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				769071B82EDEAF39000F106D /* Debug */,
-				769071B92EDEAF39000F106D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
