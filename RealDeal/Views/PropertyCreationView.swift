@@ -108,10 +108,13 @@ struct PropertyCreationView: View {
                         .keyboardType(.numberPad)
                         #endif
 
-                    TextField("Year Built", text: $viewModel.yearBuilt)
-                        #if os(iOS)
-                        .keyboardType(.numberPad)
-                        #endif
+                    Picker("Year Built", selection: $viewModel.yearBuilt) {
+                        Text("Select").tag("")
+                        // Newest first — next year allows new construction
+                        ForEach(PropertyCreationViewModel.selectableYears, id: \.self) { year in
+                            Text(String(year)).tag("\(year)")
+                        }
+                    }
 
                     if let error = viewModel.specificationsValidationError {
                         Text(error)

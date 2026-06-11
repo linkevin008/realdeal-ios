@@ -572,6 +572,13 @@ class PropertyCreationViewModel: ObservableObject {
         !isLoading
     }
 
+    /// Years offered by the Year Built picker: next year (new construction)
+    /// back to 1800, newest first. Matches the server's validation range.
+    static let selectableYears: [Int] = {
+        let nextYear = Calendar.current.component(.year, from: Date()) + 1
+        return Array((1800...nextYear).reversed())
+    }()
+
     // MARK: - Country / postal helpers
 
     /// Countries the platform supports, with localized display names. Loaded

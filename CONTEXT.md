@@ -16,6 +16,9 @@
 
 # Context
 
+## Listing form: Year Built picker 10-06-2026
+- Year Built is a Picker (matching bedrooms/bathrooms): newest-first from next year (new construction) back to 1800, "Select" empty state; `PropertyCreationViewModel.selectableYears` matches the server's validation range
+
 ## Listing form: validation-guided navigation 10-06-2026
 - Create/Update button is always tappable (disabled only mid-save) — no more greyed-out text with no explanation
 - Tapping with missing fields scrolls (ScrollViewReader + section `.id`s) to the first incomplete section in form order; each missing field shows its red "… is required" error beneath the input (the red "— must have a value" header suffix was tried and removed per feedback — per-field errors only)
