@@ -9,26 +9,12 @@ struct PropertyCreationView: View {
     @State private var showImagePicker = false
     @State private var showDeleteAlert = false
     
-    /// Section header that flags an incomplete section in red after a failed
-    /// save attempt.
-    @ViewBuilder
-    private func sectionHeader(_ title: String, _ section: PropertyCreationViewModel.FormSection) -> some View {
-        HStack {
-            Text(title)
-            if viewModel.incompleteSections.contains(section) {
-                Text("— must have a value")
-                    .foregroundColor(.red)
-                    .textCase(nil)
-            }
-        }
-    }
-
     var body: some View {
         NavigationView {
             ScrollViewReader { proxy in
             Form {
                 // Address Section
-                Section(header: sectionHeader("Address", .address)) {
+                Section(header: Text("Address")) {
                     TextField("Street Address", text: $viewModel.street)
                     if let error = viewModel.streetValidationError {
                         Text(error)
@@ -72,7 +58,7 @@ struct PropertyCreationView: View {
                 .id(PropertyCreationViewModel.FormSection.address)
 
                 // Basic Information Section
-                Section(header: sectionHeader("Basic Information", .basicInfo)) {
+                Section(header: Text("Basic Information")) {
                     TextField("Price", text: $viewModel.price)
                     if let error = viewModel.priceValidationError {
                         Text(error)
@@ -101,7 +87,7 @@ struct PropertyCreationView: View {
                 .id(PropertyCreationViewModel.FormSection.basicInfo)
 
                 // Specifications Section — required on every listing
-                Section(header: sectionHeader("Specifications", .specifications)) {
+                Section(header: Text("Specifications")) {
                     Picker("Bedrooms", selection: $viewModel.bedrooms) {
                         Text("Select").tag("")
                         ForEach(0...10, id: \.self) { n in

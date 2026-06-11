@@ -18,7 +18,7 @@
 
 ## Listing form: validation-guided navigation 10-06-2026
 - Create/Update button is always tappable (disabled only mid-save) — no more greyed-out text with no explanation
-- Tapping with missing fields scrolls (ScrollViewReader + section `.id`s) to the first incomplete section in form order and marks its header with red "— must have a value"; per-field errors render as before
+- Tapping with missing fields scrolls (ScrollViewReader + section `.id`s) to the first incomplete section in form order; each missing field shows its red "… is required" error beneath the input (the red "— must have a value" header suffix was tried and removed per feedback — per-field errors only)
 - `PropertyCreationViewModel`: `FormSection` enum (address/basicInfo/specifications), `incompleteSections` set + `firstInvalidSection` computed in `validateForm()`, cleared when the form is valid
 - 3 new tests: empty form flags all sections and targets address, ordering follows the form (price-only gap targets basicInfo), valid form clears flags — 259 tests green
 
