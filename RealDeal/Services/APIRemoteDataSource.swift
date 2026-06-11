@@ -14,8 +14,8 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
 
     // MARK: - Config
 
-    func fetchSupportedCountries() async throws -> [String] {
-        let envelope: ListEnvelope<String> = try await client.get("api/v1/config/countries")
+    func fetchSupportedCountries() async throws -> [SupportedCountry] {
+        let envelope: ListEnvelope<SupportedCountry> = try await client.get("api/v1/config/countries")
         return envelope.data
     }
 

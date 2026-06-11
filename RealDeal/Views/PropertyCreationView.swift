@@ -29,7 +29,18 @@ struct PropertyCreationView: View {
                             .foregroundColor(.red)
                     }
                     
-                    TextField(viewModel.usesZipCode ? "State" : "Province", text: $viewModel.province)
+                    // Dropdown when the selected country defines subdivisions
+                    // (backend-served); free text for countries without a list
+                    if viewModel.currentSubdivisions.isEmpty {
+                        TextField(viewModel.usesZipCode ? "State" : "Province", text: $viewModel.province)
+                    } else {
+                        Picker(viewModel.usesZipCode ? "State" : "Province", selection: $viewModel.province) {
+                            Text("Select").tag("")
+                            ForEach(viewModel.currentSubdivisions, id: \.code) { subdivision in
+                                Text(subdivision.name).tag(subdivision.code)
+                            }
+                        }
+                    }
                     if let error = viewModel.provinceValidationError {
                         Text(error)
                             .font(.caption)

@@ -1,10 +1,23 @@
 import Foundation
 
+/// A first-level administrative division (US state, Canadian province).
+struct CountrySubdivision: Codable, Equatable, Hashable {
+    let code: String
+    let name: String
+}
+
+/// A country listings can be created in, with its valid state/province codes.
+/// An empty subdivision list means the field is free text.
+struct SupportedCountry: Codable, Equatable {
+    let code: String
+    let subdivisions: [CountrySubdivision]
+}
+
 protocol RemoteDataSourceProtocol {
     // Config
-    /// ISO 3166-1 alpha-2 codes of countries listings can be created in.
+    /// Countries listings can be created in, with their subdivisions.
     /// Single source of truth is the backend (GET /api/v1/config/countries).
-    func fetchSupportedCountries() async throws -> [String]
+    func fetchSupportedCountries() async throws -> [SupportedCountry]
 
     // Properties
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property]
@@ -36,9 +49,11 @@ protocol RemoteDataSourceProtocol {
 }
 
 extension RemoteDataSourceProtocol {
-    /// Default mirrors the backend's launch list so mocks and offline paths
-    /// keep working; APIRemoteDataSource overrides with the live endpoint.
-    func fetchSupportedCountries() async throws -> [String] {
-        ["US", "CA"]
+    /// Default mirrors the backend's launch countries (subdivisions empty —
+    /// the form falls back to free text) so mocks and offline paths keep
+    /// working; APIRemoteDataSource overrides with the live endpoint.
+    func fetchSupportedCountries() async throws -> [SupportedCountry] {
+        [SupportedCountry(code: "US", subdivisions: []),
+         SupportedCountry(code: "CA", subdivisions: [])]
     }
 }

@@ -16,6 +16,12 @@
 
 # Context
 
+## Listing form: state/province dropdown per country 11-06-2026
+- State/Province is a Picker fed by the backend: `config/countries` now returns each supported country with its subdivisions (`SupportedCountry`/`CountrySubdivision` types on `RemoteDataSourceProtocol`); picker shows names, stores codes; countries without a list fall back to free text
+- Switching country clears a province that isn't valid for the new country (Combine sink on `$country`); `loadSupportedCountries` reconciles both country and province
+- Label still adapts (State for US, Province otherwise); server validates state codes against the same list (realdeal-api d7ffd9b)
+- 2 new tests (subdivisions follow selected country; switching clears foreign province) — 261 green
+
 ## Listing form: Year Built picker 10-06-2026
 - Year Built is a Picker (matching bedrooms/bathrooms): newest-first from next year (new construction) back to 1800, "Select" empty state; `PropertyCreationViewModel.selectableYears` matches the server's validation range
 

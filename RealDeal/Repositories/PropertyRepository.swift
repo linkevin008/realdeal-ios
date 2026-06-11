@@ -62,7 +62,7 @@ class PropertyRepository: PropertyRepositoryProtocol {
         }
     }
     
-    func fetchSupportedCountries() async throws -> [String] {
+    func fetchSupportedCountries() async throws -> [SupportedCountry] {
         try await remoteDataSource.fetchSupportedCountries()
     }
 

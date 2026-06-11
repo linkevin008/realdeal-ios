@@ -152,6 +152,21 @@ class PropertyCreationViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // Switching country invalidates a province from the previous country
+        // (e.g. "ON" left selected after Canada → United States)
+        $country
+            .removeDuplicates()
+            .sink { [weak self] newCountry in
+                guard let self = self, !self.province.isEmpty else { return }
+                let subdivisions = self.supportedCountryData
+                    .first { $0.code == newCountry }?.subdivisions ?? []
+                if !subdivisions.isEmpty,
+                   !subdivisions.contains(where: { $0.code == self.province }) {
+                    self.province = ""
+                }
+            }
+            .store(in: &cancellables)
+
         // Postal code validation — format depends on the selected country
         Publishers.CombineLatest($postalCode, $country)
             .debounce(for: 0.3, scheduler: DispatchQueue.main)
@@ -581,18 +596,45 @@ class PropertyCreationViewModel: ObservableObject {
 
     // MARK: - Country / postal helpers
 
-    /// Countries the platform supports, with localized display names. Loaded
-    /// from the backend (the single source of truth) by loadSupportedCountries;
-    /// starts with the launch list so the picker is never empty.
-    @Published var supportedCountries: [(code: String, name: String)] = PropertyCreationViewModel.localized(["US", "CA"])
+    /// Countries the platform supports (with their state/province lists),
+    /// loaded from the backend by loadSupportedCountries; starts with the
+    /// launch list (no subdivisions → free-text fallback) so the picker is
+    /// never empty.
+    @Published var supportedCountryData: [SupportedCountry] = [
+        SupportedCountry(code: "US", subdivisions: []),
+        SupportedCountry(code: "CA", subdivisions: []),
+    ]
+
+    /// Country options for the picker: localized display names, sorted.
+    var supportedCountries: [(code: String, name: String)] {
+        Self.localized(supportedCountryData.map(\.code))
+    }
+
+    /// Valid state/province options for the selected country; empty means the
+    /// field is free text.
+    var currentSubdivisions: [CountrySubdivision] {
+        supportedCountryData.first { $0.code == country }?.subdivisions ?? []
+    }
 
     /// Fetches the backend's supported-country list and reconciles the current
-    /// selection (falls back to the first supported country if needed).
+    /// selections (country snaps to a supported one; an invalid province for
+    /// the country resets so the picker can't submit a stale value).
     func loadSupportedCountries() async {
-        let codes = await service.supportedCountries()
-        supportedCountries = Self.localized(codes)
-        if !codes.contains(country), let first = codes.first {
-            country = first
+        supportedCountryData = await service.supportedCountries()
+        if !supportedCountryData.contains(where: { $0.code == country }),
+           let first = supportedCountryData.first {
+            country = first.code
+        }
+        reconcileProvince()
+    }
+
+    /// Clears the province when it isn't a valid subdivision of the selected
+    /// country (e.g. "ON" left over after switching Canada → United States).
+    private func reconcileProvince() {
+        let subdivisions = currentSubdivisions
+        guard !subdivisions.isEmpty, !province.isEmpty else { return }
+        if !subdivisions.contains(where: { $0.code == province }) {
+            province = ""
         }
     }
 

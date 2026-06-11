@@ -6,13 +6,16 @@ protocol PropertyRepositoryProtocol {
     func updateProperty(_ property: Property) async throws
     func deleteProperty(id: String) async throws
     func getProperty(id: String) async throws -> Property?
-    /// ISO codes of countries listings can be created in (backend-owned list).
-    func fetchSupportedCountries() async throws -> [String]
+    /// Countries listings can be created in, with their state/province codes
+    /// (backend-owned list).
+    func fetchSupportedCountries() async throws -> [SupportedCountry]
 }
 
 extension PropertyRepositoryProtocol {
-    /// Default mirrors the backend's launch list so mocks keep working.
-    func fetchSupportedCountries() async throws -> [String] {
-        ["US", "CA"]
+    /// Default mirrors the backend's launch countries so mocks keep working
+    /// (empty subdivisions — the form falls back to free text).
+    func fetchSupportedCountries() async throws -> [SupportedCountry] {
+        [SupportedCountry(code: "US", subdivisions: []),
+         SupportedCountry(code: "CA", subdivisions: [])]
     }
 }

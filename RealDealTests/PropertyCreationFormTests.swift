@@ -136,4 +136,42 @@ final class PropertyCreationFormTests: XCTestCase {
         XCTAssertTrue(codes.contains(vm.country),
                       "selection must be reconciled to a supported country")
     }
+
+    func testSubdivisionsFollowSelectedCountry() {
+        let vm = makeViewModel()
+        vm.supportedCountryData = [
+            SupportedCountry(code: "US", subdivisions: [
+                CountrySubdivision(code: "IL", name: "Illinois"),
+            ]),
+            SupportedCountry(code: "CA", subdivisions: [
+                CountrySubdivision(code: "ON", name: "Ontario"),
+            ]),
+        ]
+
+        vm.country = "US"
+        XCTAssertEqual(vm.currentSubdivisions.map(\.code), ["IL"])
+        vm.country = "CA"
+        XCTAssertEqual(vm.currentSubdivisions.map(\.code), ["ON"])
+    }
+
+    func testSwitchingCountryClearsForeignProvince() async {
+        let vm = makeViewModel()
+        vm.supportedCountryData = [
+            SupportedCountry(code: "US", subdivisions: [
+                CountrySubdivision(code: "IL", name: "Illinois"),
+            ]),
+            SupportedCountry(code: "CA", subdivisions: [
+                CountrySubdivision(code: "ON", name: "Ontario"),
+            ]),
+        ]
+        vm.country = "CA"
+        vm.province = "ON"
+
+        vm.country = "US"
+        // The reconcile runs via a Combine sink on $country
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(vm.province, "",
+                       "a province from the previous country must reset on switch")
+    }
 }

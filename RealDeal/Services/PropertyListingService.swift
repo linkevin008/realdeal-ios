@@ -104,10 +104,13 @@ class PropertyListingService {
     /// Fetch properties for a specific seller
     /// - Parameter sellerId: The seller's user ID
     /// - Returns: Array of properties owned by the seller
-    /// Countries listings can be created in. Falls back to the launch list if
-    /// the backend is unreachable so the form is never empty.
-    func supportedCountries() async -> [String] {
-        (try? await repository.fetchSupportedCountries()) ?? ["US", "CA"]
+    /// Countries listings can be created in (with their subdivisions). Falls
+    /// back to the launch list if the backend is unreachable so the form is
+    /// never empty — empty subdivisions degrade to free-text entry.
+    func supportedCountries() async -> [SupportedCountry] {
+        (try? await repository.fetchSupportedCountries())
+            ?? [SupportedCountry(code: "US", subdivisions: []),
+                SupportedCountry(code: "CA", subdivisions: [])]
     }
 
     func fetchSellerProperties(sellerId: String) async throws -> [Property] {
