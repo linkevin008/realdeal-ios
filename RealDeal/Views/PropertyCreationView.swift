@@ -105,15 +105,16 @@ struct PropertyCreationView: View {
                         .keyboardType(.numberPad)
                         #endif
 
+                    TextField("Year Built", text: $viewModel.yearBuilt)
+                        #if os(iOS)
+                        .keyboardType(.numberPad)
+                        #endif
+
                     if let error = viewModel.specificationsValidationError {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-
-                    TextField("Lot Size (acres) — optional", text: $viewModel.lotSize)
-
-                    TextField("Year Built — optional", text: $viewModel.yearBuilt)
                 }
                 
                 // Coordinates are geocoded from the address on save — the user
@@ -226,7 +227,9 @@ struct PropertyCreationView: View {
                             }
                         }
                     }
-                    .primaryButtonStyle(isLoading: viewModel.isLoading, isDisabled: !viewModel.canSave)
+                    // Plain toolbar button — a styled pill background looks
+                    // like a stray gray square inside the navigation bar
+                    .disabled(!viewModel.canSave || viewModel.isLoading)
                 }
             }
             .sheet(isPresented: $showImagePicker) {

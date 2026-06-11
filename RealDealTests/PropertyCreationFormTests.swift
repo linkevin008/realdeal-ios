@@ -23,6 +23,7 @@ final class PropertyCreationFormTests: XCTestCase {
         vm.bedrooms = "3"
         vm.bathrooms = "2"
         vm.squareFeet = "2100"
+        vm.yearBuilt = "1998"
         return vm
     }
 
@@ -57,6 +58,17 @@ final class PropertyCreationFormTests: XCTestCase {
     func testMissingSpecificationsBlockSave() async {
         let vm = makeViewModel()
         vm.bedrooms = ""
+        vm.geocode = { _ in CLLocationCoordinate2D(latitude: 0, longitude: 0) }
+
+        await vm.createProperty()
+
+        XCTAssertNil(vm.successMessage)
+        XCTAssertNotNil(vm.specificationsValidationError)
+    }
+
+    func testImplausibleYearBuiltBlocksSave() async {
+        let vm = makeViewModel()
+        vm.yearBuilt = "1500"
         vm.geocode = { _ in CLLocationCoordinate2D(latitude: 0, longitude: 0) }
 
         await vm.createProperty()

@@ -16,6 +16,11 @@
 
 # Context
 
+## Listing form follow-ups: year built required, lot size removed, toolbar fix 10-06-2026
+- Year Built is required (number pad, validated 1800..next year, mirrors server); Lot Size removed from the form and viewmodel (model keeps `lotSize` for MLS-imported display — 40 references across mocks/validators untouched)
+- Create/Update toolbar button: removed `.primaryButtonStyle` (drew a gray pill that looked like a stray square in the navigation bar); plain toolbar button with `.disabled(!canSave || isLoading)`
+- New test: implausible year built blocks save — 256 tests green
+
 ## Listing form: country dropdown, geocoding, required specs 10-06-2026
 - Country is a Picker fed by `GET /api/v1/config/countries` (backend = single source of truth; `fetchSupportedCountries` on RemoteDataSource/PropertyRepository protocols with US/CA defaults so mocks and offline keep working); stores ISO alpha-2 codes, displays `Locale.localizedString(forRegionCode:)` names; selection reconciles if the backend drops a country
 - Postal field adapts to country: "ZIP Code" + number-ish keyboard for US, "Postal Code" otherwise; validation mirrors the server (US/CA regexes in `PropertyCreationViewModel.postalCodeError`); State/Province label adapts too

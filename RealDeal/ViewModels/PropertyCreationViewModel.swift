@@ -34,7 +34,6 @@ class PropertyCreationViewModel: ObservableObject {
     @Published var bedrooms: String = ""
     @Published var bathrooms: String = ""
     @Published var squareFeet: String = ""
-    @Published var lotSize: String = ""
     @Published var yearBuilt: String = ""
     
     // Form fields - Location
@@ -400,7 +399,6 @@ class PropertyCreationViewModel: ObservableObject {
         bedrooms = property.specifications.bedrooms.map { String($0) } ?? ""
         bathrooms = property.specifications.bathrooms.map { String($0) } ?? ""
         squareFeet = property.specifications.squareFeet.map { String($0) } ?? ""
-        lotSize = property.specifications.lotSize.map { String($0) } ?? ""
         yearBuilt = property.specifications.yearBuilt.map { String($0) } ?? ""
         
         latitude = String(property.location.latitude)
@@ -423,7 +421,6 @@ class PropertyCreationViewModel: ObservableObject {
         bedrooms = ""
         bathrooms = ""
         squareFeet = ""
-        lotSize = ""
         yearBuilt = ""
         
         latitude = ""
@@ -476,6 +473,7 @@ class PropertyCreationViewModel: ObservableObject {
         }
 
         // Specifications are required on every listing
+        let currentYear = Calendar.current.component(.year, from: Date())
         if bedrooms.isEmpty || Int(bedrooms) == nil {
             specificationsValidationError = "Bedrooms is required"
             isValid = false
@@ -484,6 +482,10 @@ class PropertyCreationViewModel: ObservableObject {
             isValid = false
         } else if squareFeet.isEmpty || (Int(squareFeet) ?? 0) <= 0 {
             specificationsValidationError = "Square feet must be a positive number"
+            isValid = false
+        } else if yearBuilt.isEmpty || Int(yearBuilt) == nil
+                    || Int(yearBuilt)! < 1800 || Int(yearBuilt)! > currentYear + 1 {
+            specificationsValidationError = "Year built must be between 1800 and \(currentYear + 1)"
             isValid = false
         } else {
             specificationsValidationError = nil
@@ -516,8 +518,8 @@ class PropertyCreationViewModel: ObservableObject {
             bedrooms: bedrooms.isEmpty ? nil : Int(bedrooms),
             bathrooms: bathrooms.isEmpty ? nil : Double(bathrooms),
             squareFeet: squareFeet.isEmpty ? nil : Int(squareFeet),
-            lotSize: lotSize.isEmpty ? nil : Double(lotSize),
-            yearBuilt: yearBuilt.isEmpty ? nil : Int(yearBuilt)
+            lotSize: nil,
+            yearBuilt: Int(yearBuilt)
         )
         
         let location = Coordinate(latitude: latValue, longitude: lonValue)
@@ -547,6 +549,7 @@ class PropertyCreationViewModel: ObservableObject {
         !bedrooms.isEmpty &&
         !bathrooms.isEmpty &&
         !squareFeet.isEmpty &&
+        !yearBuilt.isEmpty &&
         streetValidationError == nil &&
         cityValidationError == nil &&
         provinceValidationError == nil &&
