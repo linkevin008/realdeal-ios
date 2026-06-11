@@ -54,6 +54,16 @@ class PropertyCreationViewModel: ObservableObject {
     @Published var locationValidationError: String?
     @Published var specificationsValidationError: String?
     
+    // Section-level validation: which form sections are incomplete, and which
+    // one the view should scroll to after a failed save attempt.
+    enum FormSection: String, Hashable {
+        case address
+        case basicInfo
+        case specifications
+    }
+    @Published var incompleteSections: Set<FormSection> = []
+    @Published var firstInvalidSection: FormSection?
+
     // Status
     @Published var propertyStatus: PropertyStatus = .active
     
@@ -439,62 +449,63 @@ class PropertyCreationViewModel: ObservableObject {
     }
     
     private func validateForm() -> Bool {
-        var isValid = true
-        
-        // Required fields validation
+        var invalid: Set<FormSection> = []
+
+        // Address section
         if street.trimmingCharacters(in: .whitespaces).isEmpty {
             streetValidationError = "Street address is required"
-            isValid = false
+            invalid.insert(.address)
         }
-        
         if city.trimmingCharacters(in: .whitespaces).isEmpty {
             cityValidationError = "City is required"
-            isValid = false
+            invalid.insert(.address)
         }
-        
         if province.trimmingCharacters(in: .whitespaces).isEmpty {
             provinceValidationError = "Province is required"
-            isValid = false
+            invalid.insert(.address)
         }
-        
         if let error = Self.postalCodeError(postalCode, country: country) {
             postalCodeValidationError = error
-            isValid = false
+            invalid.insert(.address)
         }
 
+        // Basic information section
         if price.isEmpty || Decimal(string: price) == nil || Decimal(string: price)! <= 0 {
             priceValidationError = "Price must be a positive number"
-            isValid = false
+            invalid.insert(.basicInfo)
         }
-
         if propertyDescription.trimmingCharacters(in: .whitespaces).isEmpty {
             descriptionValidationError = "Description is required"
-            isValid = false
+            invalid.insert(.basicInfo)
         }
 
-        // Specifications are required on every listing
+        // Specifications section — required on every listing
         let currentYear = Calendar.current.component(.year, from: Date())
         if bedrooms.isEmpty || Int(bedrooms) == nil {
             specificationsValidationError = "Bedrooms is required"
-            isValid = false
+            invalid.insert(.specifications)
         } else if bathrooms.isEmpty || Double(bathrooms) == nil {
             specificationsValidationError = "Bathrooms is required"
-            isValid = false
+            invalid.insert(.specifications)
         } else if squareFeet.isEmpty || (Int(squareFeet) ?? 0) <= 0 {
             specificationsValidationError = "Square feet must be a positive number"
-            isValid = false
+            invalid.insert(.specifications)
         } else if yearBuilt.isEmpty || Int(yearBuilt) == nil
                     || Int(yearBuilt)! < 1800 || Int(yearBuilt)! > currentYear + 1 {
             specificationsValidationError = "Year built must be between 1800 and \(currentYear + 1)"
-            isValid = false
+            invalid.insert(.specifications)
         } else {
             specificationsValidationError = nil
         }
-        
+
         // Coordinates are derived from the address via geocoding (resolveCoordinates),
         // not validated as user input.
 
-        return isValid
+        incompleteSections = invalid
+        // Top-to-bottom form order, so the view scrolls to the first problem
+        firstInvalidSection = [.address, .basicInfo, .specifications].first(where: invalid.contains)
+
+        return invalid.isEmpty
     }
     
     private func buildPropertyFromForm() throws -> Property {

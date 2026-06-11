@@ -86,6 +86,45 @@ final class PropertyCreationFormTests: XCTestCase {
         XCTAssertNotNil(PropertyCreationViewModel.postalCodeError("90210", country: "CA"))
     }
 
+    func testEmptyFormFlagsAllSectionsAndScrollsToAddress() async {
+        let service = PropertyListingService(
+            repository: MockPropertyRepository(),
+            imageStorage: MockImageStorage()
+        )
+        let vm = PropertyCreationViewModel(service: service, currentUserId: "user-1")
+
+        await vm.createProperty()
+
+        XCTAssertEqual(vm.incompleteSections, [.address, .basicInfo, .specifications])
+        XCTAssertEqual(vm.firstInvalidSection, .address,
+                       "the view scrolls to the first incomplete section in form order")
+    }
+
+    func testFirstInvalidSectionFollowsFormOrder() async {
+        let vm = makeViewModel()
+        vm.price = "" // only Basic Information is incomplete
+
+        await vm.createProperty()
+
+        XCTAssertEqual(vm.incompleteSections, [.basicInfo])
+        XCTAssertEqual(vm.firstInvalidSection, .basicInfo)
+    }
+
+    func testValidFormClearsSectionFlags() async {
+        let vm = makeViewModel()
+        vm.geocode = { _ in CLLocationCoordinate2D(latitude: 1, longitude: 2) }
+        vm.price = ""
+        await vm.createProperty()
+        XCTAssertEqual(vm.firstInvalidSection, .basicInfo)
+
+        vm.price = "425000"
+        await vm.createProperty()
+
+        XCTAssertNil(vm.firstInvalidSection)
+        XCTAssertTrue(vm.incompleteSections.isEmpty)
+        XCTAssertNotNil(vm.successMessage)
+    }
+
     func testSupportedCountriesLoadAndReconcileSelection() async {
         let vm = makeViewModel()
         vm.country = "FR" // not supported — should snap to a supported one

@@ -16,6 +16,12 @@
 
 # Context
 
+## Listing form: validation-guided navigation 10-06-2026
+- Create/Update button is always tappable (disabled only mid-save) — no more greyed-out text with no explanation
+- Tapping with missing fields scrolls (ScrollViewReader + section `.id`s) to the first incomplete section in form order and marks its header with red "— must have a value"; per-field errors render as before
+- `PropertyCreationViewModel`: `FormSection` enum (address/basicInfo/specifications), `incompleteSections` set + `firstInvalidSection` computed in `validateForm()`, cleared when the form is valid
+- 3 new tests: empty form flags all sections and targets address, ordering follows the form (price-only gap targets basicInfo), valid form clears flags — 259 tests green
+
 ## Listing form follow-ups: year built required, lot size removed, toolbar fix 10-06-2026
 - Year Built is required (number pad, validated 1800..next year, mirrors server); Lot Size removed from the form and viewmodel (model keeps `lotSize` for MLS-imported display — 40 references across mocks/validators untouched)
 - Create/Update toolbar button: removed `.primaryButtonStyle` (drew a gray pill that looked like a stray square in the navigation bar); plain toolbar button with `.disabled(!canSave || isLoading)`

@@ -9,11 +9,26 @@ struct PropertyCreationView: View {
     @State private var showImagePicker = false
     @State private var showDeleteAlert = false
     
+    /// Section header that flags an incomplete section in red after a failed
+    /// save attempt.
+    @ViewBuilder
+    private func sectionHeader(_ title: String, _ section: PropertyCreationViewModel.FormSection) -> some View {
+        HStack {
+            Text(title)
+            if viewModel.incompleteSections.contains(section) {
+                Text("— must have a value")
+                    .foregroundColor(.red)
+                    .textCase(nil)
+            }
+        }
+    }
+
     var body: some View {
         NavigationView {
+            ScrollViewReader { proxy in
             Form {
                 // Address Section
-                Section(header: Text("Address")) {
+                Section(header: sectionHeader("Address", .address)) {
                     TextField("Street Address", text: $viewModel.street)
                     if let error = viewModel.streetValidationError {
                         Text(error)
@@ -54,9 +69,10 @@ struct PropertyCreationView: View {
                             .foregroundColor(.red)
                     }
                 }
-                
+                .id(PropertyCreationViewModel.FormSection.address)
+
                 // Basic Information Section
-                Section(header: Text("Basic Information")) {
+                Section(header: sectionHeader("Basic Information", .basicInfo)) {
                     TextField("Price", text: $viewModel.price)
                     if let error = viewModel.priceValidationError {
                         Text(error)
@@ -82,9 +98,10 @@ struct PropertyCreationView: View {
                             .foregroundColor(.red)
                     }
                 }
-                
+                .id(PropertyCreationViewModel.FormSection.basicInfo)
+
                 // Specifications Section — required on every listing
-                Section(header: Text("Specifications")) {
+                Section(header: sectionHeader("Specifications", .specifications)) {
                     Picker("Bedrooms", selection: $viewModel.bedrooms) {
                         Text("Select").tag("")
                         ForEach(0...10, id: \.self) { n in
@@ -116,7 +133,8 @@ struct PropertyCreationView: View {
                             .foregroundColor(.red)
                     }
                 }
-                
+                .id(PropertyCreationViewModel.FormSection.specifications)
+
                 // Coordinates are geocoded from the address on save — the user
                 // never enters them. Only surfaced when geocoding fails.
                 if let error = viewModel.locationValidationError {
@@ -211,6 +229,9 @@ struct PropertyCreationView: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
+                    // Always tappable (except mid-save): tapping with missing
+                    // fields scrolls to the first incomplete section and marks
+                    // its header in red instead of silently doing nothing.
                     Button(viewModel.isEditMode ? "Update" : "Create") {
                         Task {
                             if viewModel.isEditMode {
@@ -218,7 +239,13 @@ struct PropertyCreationView: View {
                             } else {
                                 await viewModel.createProperty()
                             }
-                            
+
+                            if let target = viewModel.firstInvalidSection {
+                                withAnimation {
+                                    proxy.scrollTo(target, anchor: .top)
+                                }
+                            }
+
                             // Dismiss on success
                             if viewModel.successMessage != nil {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -227,9 +254,7 @@ struct PropertyCreationView: View {
                             }
                         }
                     }
-                    // Plain toolbar button — a styled pill background looks
-                    // like a stray gray square inside the navigation bar
-                    .disabled(!viewModel.canSave || viewModel.isLoading)
+                    .disabled(viewModel.isLoading)
                 }
             }
             .sheet(isPresented: $showImagePicker) {
@@ -266,6 +291,7 @@ struct PropertyCreationView: View {
                     LoadingIndicator(style: .overlay, message: "Saving...")
                         .fadeInOnAppear()
                 }
+            }
             }
         }
     }
