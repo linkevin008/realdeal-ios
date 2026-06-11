@@ -38,7 +38,8 @@ struct PropertyListView: View {
             ToolbarItem(placement: .automatic) {
                 Button(action: { showFilters.toggle() }) {
                     HStack(spacing: 4) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        Text("Filters")
+                        // Dot signals filters are currently applied
                         if viewModel.hasActiveFilters {
                             Circle()
                                 .fill(Color.blue)
