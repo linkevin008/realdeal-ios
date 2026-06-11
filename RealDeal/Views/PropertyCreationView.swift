@@ -219,7 +219,7 @@ struct PropertyCreationView: View {
                     }
                 }
             }
-            .navigationTitle(viewModel.isEditMode ? "Edit Property" : "Create Property")
+            .navigationTitle(viewModel.isEditMode ? "Edit Listing" : "Create Listing")
             .task { await viewModel.loadSupportedCountries() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
