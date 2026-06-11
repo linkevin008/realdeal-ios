@@ -12,6 +12,13 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
         self.imageStorage = APIImageStorage(client: client)
     }
 
+    // MARK: - Config
+
+    func fetchSupportedCountries() async throws -> [String] {
+        let envelope: ListEnvelope<String> = try await client.get("api/v1/config/countries")
+        return envelope.data
+    }
+
     // MARK: - Properties
 
     // Browse/search reads go to the lookup service (/api/v1/search/*); entity
@@ -215,7 +222,7 @@ private struct APIProperty: Decodable {
     let street: String
     let city: String
     let state: String
-    let zipCode: String
+    let postalCode: String
     let country: String
     let price: Decimal
     let propertyType: String
@@ -237,7 +244,7 @@ private struct APIProperty: Decodable {
     func asProperty() -> Property {
         Property(
             id: id,
-            address: Address(street: street, city: city, province: state, postalCode: zipCode, country: country),
+            address: Address(street: street, city: city, province: state, postalCode: postalCode, country: country),
             price: price,
             propertyType: PropertyType(rawValue: propertyType) ?? .house,
             description: description,
@@ -336,7 +343,7 @@ private struct CreatePropertyBody: Encodable {
     let street: String
     let city: String
     let state: String
-    let zipCode: String
+    let postalCode: String
     let country: String
     let price: Decimal
     let propertyType: String
@@ -357,7 +364,7 @@ private struct CreatePropertyBody: Encodable {
         street = p.address.street
         city = p.address.city
         state = p.address.province
-        zipCode = p.address.postalCode
+        postalCode = p.address.postalCode
         country = p.address.country
         price = p.price
         propertyType = p.propertyType.rawValue
@@ -378,7 +385,7 @@ private struct UpdatePropertyBody: Encodable {
     let street: String?
     let city: String?
     let state: String?
-    let zipCode: String?
+    let postalCode: String?
     let country: String?
     let price: Decimal?
     let propertyType: String?
@@ -394,7 +401,7 @@ private struct UpdatePropertyBody: Encodable {
         street = p.address.street
         city = p.address.city
         state = p.address.province
-        zipCode = p.address.postalCode
+        postalCode = p.address.postalCode
         country = p.address.country
         price = p.price
         propertyType = p.propertyType.rawValue

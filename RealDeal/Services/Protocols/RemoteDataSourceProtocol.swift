@@ -1,6 +1,11 @@
 import Foundation
 
 protocol RemoteDataSourceProtocol {
+    // Config
+    /// ISO 3166-1 alpha-2 codes of countries listings can be created in.
+    /// Single source of truth is the backend (GET /api/v1/config/countries).
+    func fetchSupportedCountries() async throws -> [String]
+
     // Properties
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property]
     func getProperty(id: String) async throws -> Property?
@@ -28,4 +33,12 @@ protocol RemoteDataSourceProtocol {
     func rejectOffer(propertyId: String, offerId: String) async throws -> Offer
     func withdrawOffer(propertyId: String, offerId: String) async throws
     func fetchMyOffers() async throws -> [Offer]
+}
+
+extension RemoteDataSourceProtocol {
+    /// Default mirrors the backend's launch list so mocks and offline paths
+    /// keep working; APIRemoteDataSource overrides with the live endpoint.
+    func fetchSupportedCountries() async throws -> [String] {
+        ["US", "CA"]
+    }
 }

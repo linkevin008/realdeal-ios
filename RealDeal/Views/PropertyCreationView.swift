@@ -28,21 +28,31 @@ struct PropertyCreationView: View {
                             .foregroundColor(.red)
                     }
                     
-                    TextField("Province", text: $viewModel.province)
+                    TextField(viewModel.usesZipCode ? "State" : "Province", text: $viewModel.province)
                     if let error = viewModel.provinceValidationError {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-                    
-                    TextField("Postal Code", text: $viewModel.postalCode)
+
+                    // Stores the ISO code; shows the localized country name.
+                    // The list comes from the backend (supported markets only).
+                    Picker("Country", selection: $viewModel.country) {
+                        ForEach(viewModel.supportedCountries, id: \.code) { option in
+                            Text(option.name).tag(option.code)
+                        }
+                    }
+
+                    // Label, keyboard, and validation adapt to the country
+                    TextField(viewModel.usesZipCode ? "ZIP Code" : "Postal Code", text: $viewModel.postalCode)
+                        #if os(iOS)
+                        .keyboardType(viewModel.usesZipCode ? .numbersAndPunctuation : .default)
+                        #endif
                     if let error = viewModel.postalCodeValidationError {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-                    
-                    TextField("Country", text: $viewModel.country)
                 }
                 
                 // Basic Information Section
@@ -73,32 +83,49 @@ struct PropertyCreationView: View {
                     }
                 }
                 
-                // Specifications Section
-                Section(header: Text("Specifications (Optional)")) {
-                    TextField("Bedrooms", text: $viewModel.bedrooms)
-                    
-                    TextField("Bathrooms", text: $viewModel.bathrooms)
-                    
+                // Specifications Section — required on every listing
+                Section(header: Text("Specifications")) {
+                    Picker("Bedrooms", selection: $viewModel.bedrooms) {
+                        Text("Select").tag("")
+                        ForEach(0...10, id: \.self) { n in
+                            Text("\(n)").tag("\(n)")
+                        }
+                    }
+
+                    Picker("Bathrooms", selection: $viewModel.bathrooms) {
+                        Text("Select").tag("")
+                        ForEach(Array(stride(from: 0.0, through: 6.0, by: 0.5)), id: \.self) { n in
+                            Text(n.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(n))" : String(format: "%.1f", n))
+                                .tag(n.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(n))" : String(format: "%.1f", n))
+                        }
+                    }
+
                     TextField("Square Feet", text: $viewModel.squareFeet)
-                    
-                    TextField("Lot Size (acres)", text: $viewModel.lotSize)
-                    
-                    TextField("Year Built", text: $viewModel.yearBuilt)
+                        #if os(iOS)
+                        .keyboardType(.numberPad)
+                        #endif
+
+                    if let error = viewModel.specificationsValidationError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+
+                    TextField("Lot Size (acres) — optional", text: $viewModel.lotSize)
+
+                    TextField("Year Built — optional", text: $viewModel.yearBuilt)
                 }
                 
-                // Location Section
-                Section(header: Text("Location Coordinates")) {
-                    TextField("Latitude", text: $viewModel.latitude)
-                    
-                    TextField("Longitude", text: $viewModel.longitude)
-                    
-                    if let error = viewModel.locationValidationError {
+                // Coordinates are geocoded from the address on save — the user
+                // never enters them. Only surfaced when geocoding fails.
+                if let error = viewModel.locationValidationError {
+                    Section {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)
                     }
                 }
-                
+
                 // Images Section
                 Section(header: Text("Property Images")) {
                     Button(action: {
@@ -174,6 +201,7 @@ struct PropertyCreationView: View {
                 }
             }
             .navigationTitle(viewModel.isEditMode ? "Edit Property" : "Create Property")
+            .task { await viewModel.loadSupportedCountries() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

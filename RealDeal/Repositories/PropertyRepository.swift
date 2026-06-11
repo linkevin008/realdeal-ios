@@ -62,6 +62,10 @@ class PropertyRepository: PropertyRepositoryProtocol {
         }
     }
     
+    func fetchSupportedCountries() async throws -> [String] {
+        try await remoteDataSource.fetchSupportedCountries()
+    }
+
     func createProperty(_ property: Property) async throws -> Property {
         // Save locally first for offline support
         try await localDataSource.saveProperty(property)
