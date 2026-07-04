@@ -16,6 +16,14 @@
 
 # Context
 
+## Text search on the Search (formerly Browse) tab 03-07-2026
+- Tab renamed Browse → Search (magnifyingglass icon); heading "Browse Properties" → "Search Properties"
+- Toolbar gains a "Search" button right of "Filters" (flow may change later): opens a sheet with a single text field; Search applies, Clear Search (shown only when active) resets; blue dot on the button while a search is active (same convention as Filters)
+- `PropertyFilters.searchText` → sent as `q` to the lookup service (`APIRemoteDataSource`); `PropertyListViewModel.loadProperties`/`loadMoreProperties` now pass the filters object to the repository so search + filters are **server-side** (was `filters: nil` + client-only filtering); `FilterService.applySearchTextFilter` mirrors the q matching (street/city/description, case-insensitive) for cache/mock paths
+- `applySearch`/`clearSearch`/`hasActiveSearch` on PropertyListViewModel; verified live: `GET /api/v1/search/properties?q=Oak` from the app in the gateway log, result list narrowed, clear restored
+- New `testApplySearchTextFilter` in FilterServiceTests
+- Note: LocalStack has no persistent volume — uploaded images vanish when the Docker daemon restarts (broken-image icon on old listings); dev-only behavior
+
 ## Listing form: state/province dropdown per country 11-06-2026
 - State/Province is a Picker fed by the backend: `config/countries` now returns each supported country with its subdivisions (`SupportedCountry`/`CountrySubdivision` types on `RemoteDataSourceProtocol`); picker shows names, stores codes; countries without a list fall back to free text
 - Switching country clears a province that isn't valid for the new country (Combine sink on `$country`); `loadSupportedCountries` reconciles both country and province

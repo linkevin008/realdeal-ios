@@ -38,7 +38,7 @@ class NavigationCoordinator: ObservableObject {
 
         var title: String {
             switch self {
-            case .browse: return "Browse"
+            case .browse: return "Search"
             case .map: return "Map"
             case .favorites: return "Favorites"
             case .myListings: return "My Listings"
@@ -48,7 +48,7 @@ class NavigationCoordinator: ObservableObject {
 
         var icon: String {
             switch self {
-            case .browse: return "list.bullet"
+            case .browse: return "magnifyingglass"
             case .map: return "map"
             case .favorites: return "heart.fill"
             case .myListings: return "house.fill"

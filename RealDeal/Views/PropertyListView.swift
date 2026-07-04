@@ -5,6 +5,8 @@ import SwiftUI
 struct PropertyListView: View {
     @StateObject private var viewModel: PropertyListViewModel
     @State private var showFilters = false
+    @State private var showSearch = false
+    @State private var searchQuery = ""
     
     init(viewModel: PropertyListViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -33,7 +35,7 @@ struct PropertyListView: View {
                 propertyListContent
             }
         }
-        .navigationTitle("Browse Properties")
+        .navigationTitle("Search Properties")
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button(action: { showFilters.toggle() }) {
@@ -48,12 +50,67 @@ struct PropertyListView: View {
                     }
                 }
             }
+
+            ToolbarItem(placement: .automatic) {
+                Button(action: { showSearch.toggle() }) {
+                    HStack(spacing: 4) {
+                        Text("Search")
+                        // Dot signals a text search is currently applied
+                        if viewModel.hasActiveSearch {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showFilters) {
             PropertyFiltersView(viewModel: viewModel)
         }
+        .sheet(isPresented: $showSearch) {
+            searchSheet
+        }
         .task {
             await viewModel.loadProperties()
+        }
+    }
+
+    /// Simple text-search entry — queried server-side by the lookup service.
+    /// Kept as its own sheet for now; the flow may change later.
+    private var searchSheet: some View {
+        NavigationView {
+            Form {
+                Section {
+                    TextField("Address, city, or description", text: $searchQuery)
+                        .onAppear { searchQuery = viewModel.filters.searchText ?? "" }
+                }
+
+                if viewModel.hasActiveSearch {
+                    Section {
+                        Button("Clear Search", role: .destructive) {
+                            searchQuery = ""
+                            showSearch = false
+                            Task { await viewModel.clearSearch() }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Search")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showSearch = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Search") {
+                        showSearch = false
+                        Task { await viewModel.applySearch(searchQuery) }
+                    }
+                }
+            }
         }
     }
     

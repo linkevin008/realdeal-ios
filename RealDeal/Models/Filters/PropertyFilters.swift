@@ -1,6 +1,9 @@
 import Foundation
 
 struct PropertyFilters: Codable, Equatable {
+    /// Free-text search across street, city, and description (server-side via
+    /// the lookup service's `q` parameter).
+    var searchText: String?
     var priceMin: Decimal?
     var priceMax: Decimal?
     var propertyTypes: Set<PropertyType>?
@@ -11,6 +14,7 @@ struct PropertyFilters: Codable, Equatable {
     var sellerId: String?
     
     init(
+        searchText: String? = nil,
         priceMin: Decimal? = nil,
         priceMax: Decimal? = nil,
         propertyTypes: Set<PropertyType>? = nil,
@@ -20,6 +24,7 @@ struct PropertyFilters: Codable, Equatable {
         sources: Set<ListingSource>? = nil,
         sellerId: String? = nil
     ) {
+        self.searchText = searchText
         self.priceMin = priceMin
         self.priceMax = priceMax
         self.propertyTypes = propertyTypes

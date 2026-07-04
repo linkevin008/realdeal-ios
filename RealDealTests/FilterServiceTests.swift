@@ -62,10 +62,32 @@ final class FilterServiceTests: XCTestCase {
     }
     
     // MARK: - No Filter Tests
-    
+
     func testApplyFiltersWithNilReturnsAllProperties() throws {
         let result = try filterService.applyFilters(testProperties, filters: nil)
         XCTAssertEqual(result.count, 3)
+    }
+
+    // MARK: - Search Text Tests
+
+    func testApplySearchTextFilter() throws {
+        // Matches street, case-insensitively
+        var filters = PropertyFilters(searchText: "oak")
+        var result = try filterService.applyFilters(testProperties, filters: filters)
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.allSatisfy { $0.address.street.localizedCaseInsensitiveContains("oak") })
+
+        // Matches description
+        filters = PropertyFilters(searchText: "modern")
+        result = try filterService.applyFilters(testProperties, filters: filters)
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.allSatisfy { $0.description.localizedCaseInsensitiveContains("modern") })
+
+        // No match returns empty; blank query returns everything
+        filters = PropertyFilters(searchText: "zzz-no-match")
+        XCTAssertTrue(try filterService.applyFilters(testProperties, filters: filters).isEmpty)
+        filters = PropertyFilters(searchText: "   ")
+        XCTAssertEqual(try filterService.applyFilters(testProperties, filters: filters).count, testProperties.count)
     }
     
     // MARK: - Price Filter Tests

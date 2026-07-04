@@ -59,8 +59,10 @@ class PropertyListViewModel: ObservableObject {
             hasMorePages = true
             
             do {
-                // Fetch all properties (filtering happens client-side for now)
-                let allProperties = try await repository.fetchProperties(filters: nil)
+                // Filters (including search text) go to the backend — the
+                // lookup service queries server-side; FilterService re-applies
+                // locally for the cache/mock paths
+                let allProperties = try await repository.fetchProperties(filters: filters)
                 
                 // Filter to only show active listings for buyers
                 let activeProperties = allProperties.filter { $0.status == .active }
@@ -166,9 +168,9 @@ class PropertyListViewModel: ObservableObject {
         currentPage += 1
         
         do {
-            // Fetch all properties
-            let allProperties = try await repository.fetchProperties(filters: nil)
-            
+            // Same server-side filtering as loadProperties
+            let allProperties = try await repository.fetchProperties(filters: filters)
+
             // Filter to only show active listings
             let activeProperties = allProperties.filter { $0.status == .active }
             
@@ -236,5 +238,25 @@ class PropertyListViewModel: ObservableObject {
         filters.locationRadius != nil ||
         filters.minBedrooms != nil ||
         filters.minBathrooms != nil
+    }
+
+    // MARK: - Search
+
+    /// True when a text search is currently applied.
+    var hasActiveSearch: Bool {
+        filters.searchText?.isEmpty == false
+    }
+
+    /// Applies a free-text search (queried server-side by the lookup service)
+    /// and reloads. An empty query clears the search.
+    func applySearch(_ query: String) async {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        filters.searchText = trimmed.isEmpty ? nil : trimmed
+        await loadProperties()
+    }
+
+    /// Clears the text search and reloads.
+    func clearSearch() async {
+        await applySearch("")
     }
 }

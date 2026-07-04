@@ -25,7 +25,10 @@ class FilterService {
         
         // Apply each filter criterion sequentially (AND logic)
         var filteredProperties = properties
-        
+
+        // Filter by search text (mirrors the lookup service's q matching)
+        filteredProperties = applySearchTextFilter(filteredProperties, filters: filters)
+
         // Filter by price range
         filteredProperties = try applyPriceFilter(filteredProperties, filters: filters)
         
@@ -53,6 +56,21 @@ class FilterService {
     // MARK: - Private Filter Methods
     
     /// Apply price range filter
+    /// Case-insensitive match across street, city, and description — the
+    /// local mirror of the lookup service's `q` matching, used on the cache
+    /// and mock paths.
+    private func applySearchTextFilter(_ properties: [Property], filters: PropertyFilters) -> [Property] {
+        guard let query = filters.searchText?.trimmingCharacters(in: .whitespaces),
+              !query.isEmpty else {
+            return properties
+        }
+        return properties.filter { property in
+            property.address.street.localizedCaseInsensitiveContains(query)
+                || property.address.city.localizedCaseInsensitiveContains(query)
+                || property.description.localizedCaseInsensitiveContains(query)
+        }
+    }
+
     private func applyPriceFilter(_ properties: [Property], filters: PropertyFilters) throws -> [Property] {
         let minPrice = filters.priceMin
         let maxPrice = filters.priceMax

@@ -26,6 +26,9 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property] {
         var queryItems: [URLQueryItem] = []
         if let f = filters {
+            if let q = f.searchText, !q.isEmpty {
+                queryItems.append(URLQueryItem(name: "q", value: q))
+            }
             if let v = f.priceMin {
                 queryItems.append(URLQueryItem(name: "min_price", value: "\(v)"))
             }
