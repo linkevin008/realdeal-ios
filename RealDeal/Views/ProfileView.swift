@@ -303,7 +303,7 @@ struct ProfileView_Previews: PreviewProvider {
             name: "John Doe",
             email: "john@example.com",
             phoneNumber: "+1234567890",
-            role: .agent,
+            role: .homeowner,
             visibilitySettings: ProfileVisibility(showEmail: true, showPhone: true, showListings: true)
         )
 

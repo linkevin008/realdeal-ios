@@ -302,38 +302,12 @@ final class AuthenticationTests: XCTestCase {
 
     // MARK: - Role-based Registration Tests
 
-    func testRegistrationWithAgentRoleStoresLicenseNumber() async throws {
-        // Given: a profile with agent role and a license number
-        let licenseNumber = "RECO-987654"
-        let profile = UserProfile(
-            name: "Agent Dana",
-            email: "dana@brokerage.ca",
-            role: .agent,
-            licenseNumber: licenseNumber
-        )
-
-        // When: signing up
-        _ = try await mockAuth.signUp(
-            email: "dana@brokerage.ca",
-            password: "Password123",
-            profile: profile
-        )
-
-        // Then: the stored profile retains the license number
-        let storedUser = mockAuth.getAllUsers().first { $0.email == "dana@brokerage.ca" }
-        XCTAssertNotNil(storedUser, "Agent should be stored after registration")
-        XCTAssertEqual(storedUser?.role, .agent)
-        XCTAssertEqual(storedUser?.licenseNumber, licenseNumber,
-            "The agent's license number should be stored on the profile")
-    }
-
-    func testRegistrationWithHomeownerRoleSucceedsWithoutLicenseNumber() async throws {
-        // Given: a homeowner profile without a license number
+    func testRegistrationWithHomeownerRoleSucceeds() async throws {
+        // Given: a homeowner profile
         let profile = UserProfile(
             name: "Eve Owner",
             email: "eve@homeowner.ca",
-            role: .homeowner,
-            licenseNumber: nil
+            role: .homeowner
         )
 
         // When: signing up
@@ -344,8 +318,7 @@ final class AuthenticationTests: XCTestCase {
         )
 
         // Then: registration succeeds
-        XCTAssertFalse(token.accessToken.isEmpty, "Homeowner registration should succeed without a license number")
+        XCTAssertFalse(token.accessToken.isEmpty, "Homeowner registration should succeed")
         XCTAssertEqual(mockAuth.currentUser?.role, .homeowner)
-        XCTAssertNil(mockAuth.currentUser?.licenseNumber, "Homeowners should not have a license number stored")
     }
 }

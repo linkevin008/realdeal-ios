@@ -29,14 +29,12 @@ class AuthViewModel: ObservableObject {
     @Published var registerConfirmPassword: String = ""
     @Published var registerPhoneNumber: String = ""
     @Published var registerRole: UserRole = .buyer
-    @Published var registerLicenseNumber: String = ""
 
     // Validation
     @Published var emailValidationError: String?
     @Published var passwordValidationError: String?
     @Published var nameValidationError: String?
     @Published var confirmPasswordError: String?
-    @Published var licenseNumberValidationError: String?
     
     // MARK: - Properties
     
@@ -190,7 +188,6 @@ class AuthViewModel: ObservableObject {
                 email: registerEmail,
                 phoneNumber: registerPhoneNumber.isEmpty ? nil : registerPhoneNumber,
                 role: registerRole,
-                licenseNumber: registerRole == .agent ? registerLicenseNumber : nil,
                 visibilitySettings: ProfileVisibility()
             )
             
@@ -397,15 +394,9 @@ class AuthViewModel: ObservableObject {
             isValid = false
         }
 
-        // License number validation for agents
-        if registerRole == .agent && registerLicenseNumber.trimmingCharacters(in: .whitespaces).isEmpty {
-            licenseNumberValidationError = "License number is required for agents"
-            isValid = false
-        }
-
         return isValid
     }
-    
+
     private func clearRegistrationForm() {
         registerName = ""
         registerEmail = ""
@@ -413,13 +404,11 @@ class AuthViewModel: ObservableObject {
         registerConfirmPassword = ""
         registerPhoneNumber = ""
         registerRole = .buyer
-        registerLicenseNumber = ""
 
         nameValidationError = nil
         emailValidationError = nil
         passwordValidationError = nil
         confirmPasswordError = nil
-        licenseNumberValidationError = nil
     }
     
     // MARK: - Computed Properties

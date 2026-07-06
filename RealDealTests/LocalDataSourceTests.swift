@@ -115,8 +115,7 @@ final class LocalDataSourceTests: XCTestCase {
             name: "John Doe",
             email: "john@example.com",
             phoneNumber: "555-1234",
-            role: .agent,
-            licenseNumber: "A1234"
+            role: .homeowner
         )
 
         // Save the profile
@@ -130,8 +129,7 @@ final class LocalDataSourceTests: XCTestCase {
         XCTAssertEqual(fetchedProfile?.id, profile.id)
         XCTAssertEqual(fetchedProfile?.name, "John Doe")
         XCTAssertEqual(fetchedProfile?.email, "john@example.com")
-        XCTAssertEqual(fetchedProfile?.role, .agent)
-        XCTAssertEqual(fetchedProfile?.licenseNumber, "A1234")
+        XCTAssertEqual(fetchedProfile?.role, .homeowner)
     }
     
     func testDeleteUserProfile() async throws {

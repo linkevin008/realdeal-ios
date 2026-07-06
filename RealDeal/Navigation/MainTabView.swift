@@ -94,7 +94,7 @@ struct MainTabView: View {
             }
             .tag(NavigationCoordinator.AppTab.favorites)
 
-            // My Listings Tab — only meaningful for agents and homeowners
+            // My Listings Tab — only meaningful for sellers/homeowners
             NavigationStack(path: $coordinator.myListingsNavigationPath) {
                 if authViewModel.isAuthenticated,
                    let role = authViewModel.currentUser?.role, role.canCreateListings {
@@ -187,7 +187,7 @@ struct MainTabView: View {
                 NavigationLink("Sign In", destination: LoginView(viewModel: authViewModel))
                     .buttonStyle(.borderedProminent)
             } else {
-                Text("Listings are available for agents and homeowners")
+                Text("Listings are available for sellers")
                     .font(.headline)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)

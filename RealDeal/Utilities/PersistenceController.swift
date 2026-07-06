@@ -282,12 +282,6 @@ struct PersistenceController {
         roleAttr.isOptional = false
         userProfileAttributes.append(roleAttr)
 
-        let licenseNumberAttr = NSAttributeDescription()
-        licenseNumberAttr.name = "licenseNumber"
-        licenseNumberAttr.attributeType = .stringAttributeType
-        licenseNumberAttr.isOptional = true
-        userProfileAttributes.append(licenseNumberAttr)
-
         let visibilityShowEmailAttr = NSAttributeDescription()
         visibilityShowEmailAttr.name = "visibilityShowEmail"
         visibilityShowEmailAttr.attributeType = .booleanAttributeType

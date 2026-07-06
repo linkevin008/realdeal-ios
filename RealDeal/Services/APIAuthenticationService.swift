@@ -161,7 +161,7 @@ private extension UserRole {
     var apiValue: String {
         switch self {
         case .buyer: return "buyer"
-        case .agent, .homeowner: return "seller"
+        case .homeowner: return "seller"
         }
     }
 

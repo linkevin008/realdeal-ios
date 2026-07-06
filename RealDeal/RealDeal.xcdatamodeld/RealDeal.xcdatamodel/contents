@@ -50,7 +50,6 @@
         <attribute name="phoneNumber" optional="YES" attributeType="String"/>
         <attribute name="profilePhotoURLString" optional="YES" attributeType="String"/>
         <attribute name="role" attributeType="String"/>
-        <attribute name="licenseNumber" optional="YES" attributeType="String"/>
         <attribute name="visibilityShowEmail" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="visibilityShowPhone" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="visibilityShowListings" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>

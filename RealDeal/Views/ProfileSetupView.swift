@@ -198,7 +198,6 @@ struct ProfileSetupView: View {
         switch role {
         case .buyer: return "I'm looking for a property"
         case .homeowner: return "I'm selling my own property"
-        case .agent: return "I manage listings for clients"
         }
     }
 

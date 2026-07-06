@@ -402,7 +402,6 @@ class LocalDataSource: LocalDataSourceProtocol {
             phoneNumber: entity.phoneNumber,
             profilePhotoURL: profilePhotoURL,
             role: role,
-            licenseNumber: entity.licenseNumber,
             visibilitySettings: visibility,
             createdAt: entity.createdAt
         )
@@ -414,7 +413,6 @@ class LocalDataSource: LocalDataSourceProtocol {
         entity.phoneNumber = profile.phoneNumber
         entity.profilePhotoURLString = profile.profilePhotoURL?.absoluteString
         entity.role = profile.role.rawValue
-        entity.licenseNumber = profile.licenseNumber
         entity.visibilityShowEmail = profile.visibilitySettings.showEmail
         entity.visibilityShowPhone = profile.visibilitySettings.showPhone
         entity.visibilityShowListings = profile.visibilitySettings.showListings

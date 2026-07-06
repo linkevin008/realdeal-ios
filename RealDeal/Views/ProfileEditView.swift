@@ -325,15 +325,15 @@ struct ProfileEditView_Previews: PreviewProvider {
             name: "John Doe",
             email: "john@example.com",
             phoneNumber: "+1234567890",
-            role: .agent,
+            role: .homeowner,
             visibilitySettings: ProfileVisibility(showEmail: true, showPhone: true, showListings: true)
         )
-        
+
         // Populate edit fields
         viewModel.editName = "John Doe"
         viewModel.editEmail = "john@example.com"
         viewModel.editPhoneNumber = "+1234567890"
-        viewModel.editRole = .agent
+        viewModel.editRole = .homeowner
         
         return ProfileEditView(viewModel: viewModel)
     }
