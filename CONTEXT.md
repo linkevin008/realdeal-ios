@@ -1,20 +1,14 @@
-# Responsibilities
-- This repo is for the app's iOS logic, app code
-- The app's code should be low latency
-
-# Backlog
-- [x][P0] Implement photo upload functionality
-- [x][P0] Symlink the upper CLAUDE.md file to all other repos
-- [x][P0] Implement buying functionality — offer submission and seller offer management
-- [x][P1] After sign-up, route new users to a "Complete Your Profile" onboarding flow instead of showing the "Profile Not Found" empty state — ProfileViewModel fetches from the repo independently of auth, so a brand new user lands on an empty state that looks like an error
-- [x][P1] Adopt the lookup service's /api/v1/search/properties endpoint for property browsing
-- [x][P1] Add sign-out UI — the app previously had no way to sign out anywhere
-- [ ][P2] Decide on color scheme and theme
-- [ ][P1] Implement legal consent form
-- [ ][P2] Do we want to implement a chat feature?
-- [ ][P1] Create informational walk through and explanation bubbles   
-
 # Context
+
+## Remove the agent user role — 2-user model (buyers + sellers) 05-07-2026
+- Product decision: RealDeal is direct buyer↔seller ("Uber for private real estate sellers"); the realtor/agent concept is removed entirely. Backend (realdeal-api) needed zero changes — its UserRole was already buyer/seller only; this was an iOS-only removal
+- `UserRole.swift`: removed `.agent` case and the `requiresLicenseNumber` property; enum is now `.buyer`/`.homeowner` (homeowner still maps to API "seller")
+- Removed `licenseNumber` end-to-end: `UserProfile`, `AuthViewModel` (registration state, validation block, form reset), `LocalDataSource` mappings, and all three Core Data layers — the `.xcdatamodeld` contents (missed by the initial code map — the compiled model is the primary one; the programmatic model in `PersistenceController` is only a fallback), `UserProfileEntity+CoreDataProperties`, and the programmatic attribute
+- Core Data migration: lightweight migration already enabled (`shouldMigrateStoreAutomatically`/`shouldInferMappingModelAutomatically`); attribute removal migrates cleanly, with an existing delete-and-retry fallback for incompatible stores (dev-only data)
+- Role→API mapping simplified in `APIAuthenticationService` and `APIRemoteDataSource` (`.homeowner` → "seller"); role pickers iterate `UserRole.allCases` so the UI adapted automatically; agent mentions scrubbed from `MainTabView` copy and View previews
+- KEPT `ListingSource.realtor` + AggregationService priorities — listing data source, not a user role
+- Tests: deleted 7 agent/license tests (including two now-vacuous licence-number checks), renamed the case-count test to assert 2 roles, simplified homeowner registration test, updated LocalDataSource fixture — suite green (253 passed, 0 failed), verified independently by reviewer
+- First task run through the orchestrator pipeline: researcher (code map) → executor (implementation) → evaluator (independent review + test run, APPROVE) → committer
 
 ## Text search on the Search (formerly Browse) tab 03-07-2026
 - Tab renamed Browse → Search (magnifyingglass icon); heading "Browse Properties" → "Search Properties"
