@@ -46,6 +46,24 @@ protocol RemoteDataSourceProtocol {
     func rejectOffer(propertyId: String, offerId: String) async throws -> Offer
     func withdrawOffer(propertyId: String, offerId: String) async throws
     func fetchMyOffers() async throws -> [Offer]
+
+    // Viewings
+    /// Seller posts a one-off dated slot on their listing.
+    func createViewingSlot(propertyId: String, startTime: Date, endTime: Date) async throws -> ViewingSlot
+    /// Public: slots for a listing, each carrying a `booked` flag.
+    func fetchViewingSlots(propertyId: String) async throws -> [ViewingSlot]
+    /// Seller deletes a slot (fails server-side if it has a confirmed viewing).
+    func deleteViewingSlot(propertyId: String, slotId: String) async throws
+    /// Buyer requests a viewing against an open slot.
+    func requestViewing(propertyId: String, slotId: String, message: String?) async throws -> ViewingRequest
+    /// Seller: incoming requests for a listing.
+    func fetchViewingRequests(propertyId: String) async throws -> [ViewingRequest]
+    func acceptViewingRequest(propertyId: String, requestId: String) async throws -> ViewingRequest
+    func declineViewingRequest(propertyId: String, requestId: String) async throws -> ViewingRequest
+    /// Buyer cancels their own request (pending or accepted).
+    func cancelViewingRequest(requestId: String) async throws
+    /// Buyer: all of their own viewing requests across listings.
+    func fetchMyViewingRequests() async throws -> [ViewingRequest]
 }
 
 extension RemoteDataSourceProtocol {

@@ -160,52 +160,105 @@ struct PropertyDetailView: View {
                 )
             }
         }
+        .sheet(isPresented: $viewModel.isShowingViewingSheet, onDismiss: {
+            Task { await viewModel.checkMyViewingRequest() }
+        }) {
+            if let remote = viewModel.remoteDataSource {
+                RequestViewingView(
+                    viewModel: RequestViewingViewModel(remoteDataSource: remote),
+                    propertyId: viewModel.property.id
+                )
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if !viewModel.isSeller && viewModel.property.status == .active {
-                offerActionBar
+                actionBar
             }
         }
         .task {
             await viewModel.loadSellerProfile()
             await viewModel.checkFavoriteStatus()
             await viewModel.checkMyPendingOffer()
+            await viewModel.checkMyViewingRequest()
         }
         .refreshable {
             await viewModel.refreshProperty()
             await viewModel.loadSellerProfile()
             await viewModel.checkFavoriteStatus()
             await viewModel.checkMyPendingOffer()
+            await viewModel.checkMyViewingRequest()
         }
     }
 
     @ViewBuilder
-    private var offerActionBar: some View {
+    private var actionBar: some View {
         VStack(spacing: 0) {
             Divider()
-            if viewModel.myPendingOffer != nil {
-                HStack {
-                    Image(systemName: "clock.fill")
-                        .foregroundColor(.orange)
-                    Text("Offer Pending")
-                        .fontWeight(.semibold)
-                        .foregroundColor(.orange)
+            VStack(spacing: 8) {
+                if viewModel.myPendingOffer != nil {
+                    HStack {
+                        Image(systemName: "clock.fill")
+                            .foregroundColor(.orange)
+                        Text("Offer Pending")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.orange)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemBackground))
+                } else {
+                    Button(action: { viewModel.isShowingOfferSheet = true }) {
+                        Text("Make Offer")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color(.systemBackground))
-            } else {
-                Button(action: { viewModel.isShowingOfferSheet = true }) {
-                    Text("Make Offer")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
+
+                viewingActionRow
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(.systemBackground))
+        }
+    }
+
+    @ViewBuilder
+    private var viewingActionRow: some View {
+        if let request = viewModel.myViewingRequest {
+            HStack {
+                Image(systemName: request.status == .accepted ? "checkmark.circle.fill" : "clock.fill")
+                    .foregroundColor(request.status == .accepted ? .green : .orange)
+                Text(request.status == .accepted ? "Viewing Confirmed" : "Viewing Requested")
+                    .fontWeight(.semibold)
+                    .foregroundColor(request.status == .accepted ? .green : .orange)
+                Spacer()
+                Button(role: .destructive) {
+                    Task { await viewModel.cancelMyViewingRequest() }
+                } label: {
+                    if viewModel.isCancellingViewingRequest {
+                        ProgressView()
+                    } else {
+                        Text("Cancel")
+                    }
                 }
-                .background(Color(.systemBackground))
+                .disabled(viewModel.isCancellingViewingRequest)
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+        } else {
+            Button(action: { viewModel.isShowingViewingSheet = true }) {
+                Text("Request Viewing")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundColor(.blue)
+                    .cornerRadius(12)
             }
         }
     }

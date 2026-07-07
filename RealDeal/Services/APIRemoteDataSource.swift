@@ -208,6 +208,83 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
         )
         return envelope.data.map { $0.asOffer() }
     }
+
+    // MARK: - Viewings
+
+    func createViewingSlot(propertyId: String, startTime: Date, endTime: Date) async throws -> ViewingSlot {
+        struct Body: Encodable { let startTime: Date; let endTime: Date }
+        let envelope: Envelope<APIViewingSlot> = try await client.post(
+            "api/v1/properties/\(propertyId)/viewing-slots",
+            body: Body(startTime: startTime, endTime: endTime),
+            requiresAuth: true
+        )
+        return envelope.data.asViewingSlot()
+    }
+
+    func fetchViewingSlots(propertyId: String) async throws -> [ViewingSlot] {
+        let envelope: Envelope<[APIViewingSlot]> = try await client.get(
+            "api/v1/properties/\(propertyId)/viewing-slots"
+        )
+        return envelope.data.map { $0.asViewingSlot() }
+    }
+
+    func deleteViewingSlot(propertyId: String, slotId: String) async throws {
+        try await client.delete(
+            "api/v1/properties/\(propertyId)/viewing-slots/\(slotId)",
+            requiresAuth: true
+        )
+    }
+
+    func requestViewing(propertyId: String, slotId: String, message: String?) async throws -> ViewingRequest {
+        struct Body: Encodable { let message: String? }
+        let envelope: Envelope<APIViewingRequest> = try await client.post(
+            "api/v1/properties/\(propertyId)/viewing-slots/\(slotId)/requests",
+            body: Body(message: message),
+            requiresAuth: true
+        )
+        return envelope.data.asViewingRequest()
+    }
+
+    func fetchViewingRequests(propertyId: String) async throws -> [ViewingRequest] {
+        let envelope: Envelope<[APIViewingRequest]> = try await client.get(
+            "api/v1/properties/\(propertyId)/viewing-requests",
+            requiresAuth: true
+        )
+        return envelope.data.map { $0.asViewingRequest() }
+    }
+
+    func acceptViewingRequest(propertyId: String, requestId: String) async throws -> ViewingRequest {
+        let envelope: Envelope<APIViewingRequest> = try await client.put(
+            "api/v1/properties/\(propertyId)/viewing-requests/\(requestId)/accept",
+            body: EmptyBody(),
+            requiresAuth: true
+        )
+        return envelope.data.asViewingRequest()
+    }
+
+    func declineViewingRequest(propertyId: String, requestId: String) async throws -> ViewingRequest {
+        let envelope: Envelope<APIViewingRequest> = try await client.put(
+            "api/v1/properties/\(propertyId)/viewing-requests/\(requestId)/decline",
+            body: EmptyBody(),
+            requiresAuth: true
+        )
+        return envelope.data.asViewingRequest()
+    }
+
+    func cancelViewingRequest(requestId: String) async throws {
+        try await client.delete(
+            "api/v1/viewing-requests/\(requestId)",
+            requiresAuth: true
+        )
+    }
+
+    func fetchMyViewingRequests() async throws -> [ViewingRequest] {
+        let envelope: Envelope<[APIViewingRequest]> = try await client.get(
+            "api/v1/users/me/viewing-requests",
+            requiresAuth: true
+        )
+        return envelope.data.map { $0.asViewingRequest() }
+    }
 }
 
 // MARK: - Private DTOs
@@ -325,6 +402,46 @@ private struct APIOffer: Decodable {
             updatedAt: updatedAt,
             property: nil,
             buyer: nil
+        )
+    }
+}
+
+private struct APIViewingSlot: Decodable {
+    let id: String
+    let propertyId: String
+    let startTime: Date
+    let endTime: Date
+    let booked: Bool
+
+    func asViewingSlot() -> ViewingSlot {
+        ViewingSlot(id: id, propertyId: propertyId, startTime: startTime, endTime: endTime, booked: booked)
+    }
+}
+
+private struct APIViewingRequest: Decodable {
+    let id: String
+    let slotId: String
+    let propertyId: String
+    let buyerId: String
+    let message: String?
+    let status: String
+    let createdAt: Date
+    let slot: APIViewingSlot?
+    let buyer: APIUser?
+    let property: APIProperty?
+
+    func asViewingRequest() -> ViewingRequest {
+        ViewingRequest(
+            id: id,
+            slotId: slotId,
+            propertyId: propertyId,
+            buyerId: buyerId,
+            message: message,
+            status: ViewingRequestStatus(rawValue: status) ?? .pending,
+            createdAt: createdAt,
+            slot: slot?.asViewingSlot(),
+            buyer: buyer.map { UserProfile(apiUser: $0) },
+            property: property?.asProperty()
         )
     }
 }

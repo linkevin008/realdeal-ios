@@ -9,6 +9,7 @@ struct MyListingsView: View {
     @State private var propertyToDelete: Property?
     @State private var showDeleteAlert = false
     @State private var offersProperty: Property?
+    @State private var viewingsProperty: Property?
     
     var body: some View {
         NavigationView {
@@ -67,6 +68,14 @@ struct MyListingsView: View {
                 NavigationView {
                     SellerOffersView(
                         viewModel: SellerOffersViewModel(remoteDataSource: viewModel.remoteDataSource),
+                        property: property
+                    )
+                }
+            }
+            .sheet(item: $viewingsProperty) { property in
+                NavigationView {
+                    SellerViewingsView(
+                        viewModel: SellerViewingsViewModel(remoteDataSource: viewModel.remoteDataSource),
                         property: property
                     )
                 }
@@ -178,6 +187,13 @@ struct MyListingsView: View {
                             Label("Offers", systemImage: "tag.fill")
                         }
                         .tint(.purple)
+
+                        Button {
+                            viewingsProperty = property
+                        } label: {
+                            Label("Viewings", systemImage: "calendar")
+                        }
+                        .tint(.indigo)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {

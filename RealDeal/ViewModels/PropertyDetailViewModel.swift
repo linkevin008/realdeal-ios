@@ -16,6 +16,9 @@ class PropertyDetailViewModel: ObservableObject {
     @Published var isFavorite: Bool = false
     @Published var isShowingOfferSheet: Bool = false
     @Published var myPendingOffer: Offer?
+    @Published var isShowingViewingSheet: Bool = false
+    @Published var myViewingRequest: ViewingRequest?
+    @Published var isCancellingViewingRequest: Bool = false
     
     // MARK: - Properties
     
@@ -56,6 +59,33 @@ class PropertyDetailViewModel: ObservableObject {
         } catch {
             // Non-critical
         }
+    }
+
+    /// Checks for the buyer's live (pending or accepted) viewing request on
+    /// this listing, so the action bar can reflect existing state instead of
+    /// letting the buyer submit a duplicate.
+    func checkMyViewingRequest() async {
+        guard let remote = remoteDataSource, !isSeller else { return }
+        do {
+            let myRequests = try await remote.fetchMyViewingRequests()
+            myViewingRequest = myRequests.first {
+                $0.propertyId == property.id && ($0.status == .pending || $0.status == .accepted)
+            }
+        } catch {
+            // Non-critical
+        }
+    }
+
+    func cancelMyViewingRequest() async {
+        guard let remote = remoteDataSource, let request = myViewingRequest else { return }
+        isCancellingViewingRequest = true
+        do {
+            try await remote.cancelViewingRequest(requestId: request.id)
+            myViewingRequest = nil
+        } catch {
+            errorMessage = "Failed to cancel viewing request."
+        }
+        isCancellingViewingRequest = false
     }
     
     // MARK: - Actions

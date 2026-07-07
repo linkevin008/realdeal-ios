@@ -10,6 +10,11 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
     private var favorites: [String: Favorite] = [:]
     private var images: [URL: Data] = [:]
     private var offers: [String: Offer] = [:]
+    private var viewingSlots: [String: ViewingSlot] = [:]
+    private var viewingRequests: [String: ViewingRequest] = [:]
+    /// Buyer ID stamped on mock-submitted viewing requests, mirroring how
+    /// submitOffer stamps "mock-buyer" — dev/preview flows only.
+    var mockCurrentBuyerId: String = "mock-buyer"
     
     // MARK: - Configuration
     private let simulateNetworkDelay: Bool
@@ -286,13 +291,119 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         return Array(offers.values)
     }
 
+    // MARK: - Viewings
+
+    func createViewingSlot(propertyId: String, startTime: Date, endTime: Date) async throws -> ViewingSlot {
+        await simulateDelay()
+        let slot = ViewingSlot(id: UUID().uuidString, propertyId: propertyId, startTime: startTime, endTime: endTime, booked: false)
+        viewingSlots[slot.id] = slot
+        return slot
+    }
+
+    func fetchViewingSlots(propertyId: String) async throws -> [ViewingSlot] {
+        await simulateDelay()
+        return viewingSlots.values
+            .filter { $0.propertyId == propertyId }
+            .sorted { $0.startTime < $1.startTime }
+    }
+
+    func deleteViewingSlot(propertyId: String, slotId: String) async throws {
+        await simulateDelay()
+        guard viewingSlots[slotId] != nil else { throw MockDataSourceError.notFound }
+        viewingSlots.removeValue(forKey: slotId)
+    }
+
+    func requestViewing(propertyId: String, slotId: String, message: String?) async throws -> ViewingRequest {
+        await simulateDelay()
+        guard let slot = viewingSlots[slotId] else { throw MockDataSourceError.notFound }
+        let request = ViewingRequest(
+            id: UUID().uuidString,
+            slotId: slotId,
+            propertyId: propertyId,
+            buyerId: mockCurrentBuyerId,
+            message: message,
+            status: .pending,
+            createdAt: Date(),
+            slot: slot,
+            buyer: nil,
+            property: properties[propertyId]
+        )
+        viewingRequests[request.id] = request
+        return request
+    }
+
+    func fetchViewingRequests(propertyId: String) async throws -> [ViewingRequest] {
+        await simulateDelay()
+        return viewingRequests.values
+            .filter { $0.propertyId == propertyId }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func acceptViewingRequest(propertyId: String, requestId: String) async throws -> ViewingRequest {
+        await simulateDelay()
+        guard let request = viewingRequests[requestId] else { throw MockDataSourceError.notFound }
+        let updated = ViewingRequest(
+            id: request.id, slotId: request.slotId, propertyId: request.propertyId, buyerId: request.buyerId,
+            message: request.message, status: .accepted, createdAt: request.createdAt,
+            slot: request.slot, buyer: request.buyer, property: request.property
+        )
+        viewingRequests[requestId] = updated
+
+        // Mirror the API: accepting one request declines other pending
+        // requests for the same slot, and the slot becomes booked.
+        for (id, other) in viewingRequests where other.slotId == request.slotId && id != requestId && other.status == .pending {
+            viewingRequests[id] = ViewingRequest(
+                id: other.id, slotId: other.slotId, propertyId: other.propertyId, buyerId: other.buyerId,
+                message: other.message, status: .declined, createdAt: other.createdAt,
+                slot: other.slot, buyer: other.buyer, property: other.property
+            )
+        }
+        if let slot = viewingSlots[request.slotId] {
+            viewingSlots[request.slotId] = ViewingSlot(
+                id: slot.id, propertyId: slot.propertyId, startTime: slot.startTime, endTime: slot.endTime, booked: true
+            )
+        }
+        return updated
+    }
+
+    func declineViewingRequest(propertyId: String, requestId: String) async throws -> ViewingRequest {
+        await simulateDelay()
+        guard let request = viewingRequests[requestId] else { throw MockDataSourceError.notFound }
+        let updated = ViewingRequest(
+            id: request.id, slotId: request.slotId, propertyId: request.propertyId, buyerId: request.buyerId,
+            message: request.message, status: .declined, createdAt: request.createdAt,
+            slot: request.slot, buyer: request.buyer, property: request.property
+        )
+        viewingRequests[requestId] = updated
+        return updated
+    }
+
+    func cancelViewingRequest(requestId: String) async throws {
+        await simulateDelay()
+        guard let request = viewingRequests[requestId] else { throw MockDataSourceError.notFound }
+        viewingRequests[requestId] = ViewingRequest(
+            id: request.id, slotId: request.slotId, propertyId: request.propertyId, buyerId: request.buyerId,
+            message: request.message, status: .cancelled, createdAt: request.createdAt,
+            slot: request.slot, buyer: request.buyer, property: request.property
+        )
+    }
+
+    func fetchMyViewingRequests() async throws -> [ViewingRequest] {
+        await simulateDelay()
+        return viewingRequests.values
+            .filter { $0.buyerId == mockCurrentBuyerId }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     // MARK: - Test Helpers
     
     /// Seed the mock data source with test data
     func seedData(
         properties: [Property] = [],
         userProfiles: [UserProfile] = [],
-        favorites: [Favorite] = []
+        favorites: [Favorite] = [],
+        viewingSlots: [ViewingSlot] = [],
+        viewingRequests: [ViewingRequest] = []
     ) {
         for property in properties {
             self.properties[property.id] = property
@@ -303,14 +414,22 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         for favorite in favorites {
             self.favorites[favorite.id] = favorite
         }
+        for slot in viewingSlots {
+            self.viewingSlots[slot.id] = slot
+        }
+        for request in viewingRequests {
+            self.viewingRequests[request.id] = request
+        }
     }
-    
+
     /// Clear all data from the mock data source
     func clearAll() {
         properties.removeAll()
         userProfiles.removeAll()
         favorites.removeAll()
         images.removeAll()
+        viewingSlots.removeAll()
+        viewingRequests.removeAll()
     }
     
     /// Get all stored properties (for testing)
