@@ -23,6 +23,7 @@ Priority: P0 = important/must have, P1 = need to have but not crucial, P2 = nice
 - [ ][P0] Contract/signing wizard UI: after a bid is accepted, guide both parties through signing the required documents (documents stubbed for MVP; wire the real signing state machine)
 - [ ][P0] Escrow/payment UI: collect the buyer's payment details to fund escrow after both parties sign; reflect the sold state once the transaction completes
 - [ ][P2] Decide on color scheme and theme
+- [x][P0] Fix APIOffer wire-decode bug: explicit snake_case CodingKeys conflict with APIClient's .convertFromSnakeCase — offer flow (submit/list/accept) fails to decode real API responses at runtime; remove the CodingKeys and add a wire-decode test (same fix as the viewing DTOs, see 06-07-2026 context entry)
 - [ ][P1] Implement legal consent form
 - [ ][P2] Do we want to implement a chat feature?
 - [ ][P1] Create informational walk through and explanation bubbles

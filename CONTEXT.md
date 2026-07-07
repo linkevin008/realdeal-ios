@@ -1,5 +1,13 @@
 # Context
 
+## Fix APIOffer wire-decode bug + decode preloaded associations 06-07-2026
+- Removed the explicit snake_case `CodingKeys` from `APIOffer` (APIRemoteDataSource.swift) and the public `Offer` model — they conflicted with `APIClient.decoder`'s `.convertFromSnakeCase` (keys rewritten to camelCase before CodingKey matching → guaranteed `keyNotFound` on every real offer response). Same bug class as the viewing DTOs fixed in 9ba2384; offer tests never caught it because they're all mock-routed
+- Public `Offer` CodingKeys removal verified safe: no `decode(Offer.self)`/encode call sites, no Core Data OfferEntity — all constructions memberwise
+- Bonus fix: `APIOffer.asOffer()` had hardcoded `property: nil, buyer: nil`, discarding associations the Go handlers preload (Buyer on submit/accept/reject/list, Property+Images on ListMyOffers). Added `property: APIProperty?`/`buyer: APIUser?` and wired them through — verified `APIUser` matches the non-hidden Go User json tags exactly (sensitive fields are `json:"-"`)
+- Post-fix sweep: zero explicit CodingKeys remain in APIRemoteDataSource.swift — this bug class is extinct in the DTO layer
+- New `OfferWireDecodingTests.swift`: 2 regression tests decoding realistic Go-shaped envelope JSON (nested buyer, mixed fractional/plain RFC3339 timestamps) through the real `APIClient.decoder`
+- Suite: 271 tests, 0 failures; evaluator-verified (APPROVE)
+
 ## Viewing scheduling UI: seller slots, buyer requests 06-07-2026
 - Backend counterpart: realdeal-api ab6323b (one-off slots, seller-approved requests, one buyer per slot, public slot list with computed `booked` flag)
 - New `Models/Viewing/` (`ViewingSlot`, `ViewingRequest` + status enum), 9 operations added to `RemoteDataSourceProtocol`/`APIRemoteDataSource`/`MockRemoteDataSource`
