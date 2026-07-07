@@ -19,7 +19,7 @@ Priority: P0 = important/must have, P1 = need to have but not crucial, P2 = nice
 - [x][P1] Adopt the lookup service's /api/v1/search/properties endpoint for property browsing
 - [x][P1] Add sign-out UI — the app previously had no way to sign out anywhere
 - [x][P0] Remove the agent role from the app — drop the .agent registration option, license-number field/validation, and agent-specific tests (2-user model: buyers + sellers; coordinate with realdeal-api)
-- [ ][P0] Viewing requests UI: sellers set availability windows on a listing; buyers request a viewing against those windows
+- [x][P0] Viewing requests UI: sellers set availability windows on a listing; buyers request a viewing against those windows
 - [ ][P0] Contract/signing wizard UI: after a bid is accepted, guide both parties through signing the required documents (documents stubbed for MVP; wire the real signing state machine)
 - [ ][P0] Escrow/payment UI: collect the buyer's payment details to fund escrow after both parties sign; reflect the sold state once the transaction completes
 - [ ][P2] Decide on color scheme and theme

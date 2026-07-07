@@ -1,5 +1,14 @@
 # Context
 
+## Viewing scheduling UI: seller slots, buyer requests 06-07-2026
+- Backend counterpart: realdeal-api ab6323b (one-off slots, seller-approved requests, one buyer per slot, public slot list with computed `booked` flag)
+- New `Models/Viewing/` (`ViewingSlot`, `ViewingRequest` + status enum), 9 operations added to `RemoteDataSourceProtocol`/`APIRemoteDataSource`/`MockRemoteDataSource`
+- Buyer: PropertyDetailView action bar gains Request Viewing beside Make Offer — sheet lists open (non-booked, future) slots, optional message; live request shows as "Viewing Requested"/"Viewing Confirmed" with Cancel (pending or accepted)
+- Seller: MyListingsView "Viewings" swipe action (mirrors "Offers") → SellerViewingsView: slot add (date pickers, client validation mirroring server rules)/delete with confirmation, requests grouped by slot with Accept/Decline; local state optimistically mirrors server transaction side effects (same convention as SellerOffersViewModel)
+- **Evaluator REJECT round caught a real runtime bug**: the wire DTOs declared explicit snake_case `CodingKeys` while `APIClient.decoder` uses `.convertFromSnakeCase` — mutually exclusive, every real API response would throw `keyNotFound`. Undetected by 268 green tests because nothing decoded real JSON (all mock-routed). Fixed by dropping the CodingKeys (APIProperty's convention) and adding two wire-decode tests that pipe realistic Go-shaped envelope JSON through the real `APIClient.decoder`
+- **Known pre-existing bug found in the process**: `APIOffer` (APIRemoteDataSource.swift ~385) has the identical CodingKeys+convertFromSnakeCase conflict — the offer flow (submit/list/accept) will fail to decode real API responses at runtime; never surfaced because offer tests are mock-only and the flow hasn't been live-tested from the app. Fix pending backlog decision
+- Suite: 270 tests, 0 failures (16 ViewingSchedulingTests incl. the 2 wire-decode guards)
+
 ## Remove the agent user role — 2-user model (buyers + sellers) 05-07-2026
 - Product decision: RealDeal is direct buyer↔seller ("Uber for private real estate sellers"); the realtor/agent concept is removed entirely. Backend (realdeal-api) needed zero changes — its UserRole was already buyer/seller only; this was an iOS-only removal
 - `UserRole.swift`: removed `.agent` case and the `requiresLicenseNumber` property; enum is now `.buyer`/`.homeowner` (homeowner still maps to API "seller")
