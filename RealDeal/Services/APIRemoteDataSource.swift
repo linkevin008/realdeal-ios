@@ -381,14 +381,8 @@ private struct APIOffer: Decodable {
     let status: String
     let createdAt: Date
     let updatedAt: Date
-
-    enum CodingKeys: String, CodingKey {
-        case id, amount, message, status
-        case propertyId = "property_id"
-        case buyerId = "buyer_id"
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-    }
+    let property: APIProperty?
+    let buyer: APIUser?
 
     func asOffer() -> Offer {
         Offer(
@@ -400,8 +394,8 @@ private struct APIOffer: Decodable {
             status: OfferStatus(rawValue: status) ?? .pending,
             createdAt: createdAt,
             updatedAt: updatedAt,
-            property: nil,
-            buyer: nil
+            property: property?.asProperty(),
+            buyer: buyer.map { UserProfile(apiUser: $0) }
         )
     }
 }
