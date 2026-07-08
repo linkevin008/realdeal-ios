@@ -92,6 +92,7 @@ private struct OfferRow: View {
                             .foregroundColor(.white)
                             .cornerRadius(8)
                     }
+                    .buttonStyle(.borderless)
                     Button(action: onReject) {
                         Text("Reject")
                             .fontWeight(.semibold)
@@ -101,6 +102,7 @@ private struct OfferRow: View {
                             .foregroundColor(.white)
                             .cornerRadius(8)
                     }
+                    .buttonStyle(.borderless)
                 }
             }
         }

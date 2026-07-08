@@ -182,6 +182,7 @@ private struct RequestRow: View {
                             .foregroundColor(.white)
                             .cornerRadius(6)
                     }
+                    .buttonStyle(.borderless)
                     Button(action: onDecline) {
                         Text("Decline")
                             .font(.caption)
@@ -192,6 +193,7 @@ private struct RequestRow: View {
                             .foregroundColor(.white)
                             .cornerRadius(6)
                     }
+                    .buttonStyle(.borderless)
                 }
             }
         }

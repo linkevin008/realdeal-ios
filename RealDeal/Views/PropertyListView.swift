@@ -170,12 +170,19 @@ struct PropertyCardView: View {
     var onTap: (() -> Void)? = nil
     
     var body: some View {
-        Button(action: {
-            onTap?()
-        }) {
+        // Only wrap in a Button when this card owns tap handling itself.
+        // When `onTap` is nil, the card is expected to be embedded directly
+        // inside an enclosing NavigationLink's label — wrapping it in a
+        // Button here would consume the tap gesture (with a no-op action)
+        // and prevent the NavigationLink from ever activating.
+        if let onTap = onTap {
+            Button(action: onTap) {
+                cardContent
+            }
+            .buttonStyle(PlainButtonStyle())
+        } else {
             cardContent
         }
-        .buttonStyle(PlainButtonStyle())
     }
     
     private var cardContent: some View {

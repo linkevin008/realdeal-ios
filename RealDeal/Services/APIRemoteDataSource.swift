@@ -405,10 +405,14 @@ private struct APIViewingSlot: Decodable {
     let propertyId: String
     let startTime: Date
     let endTime: Date
-    let booked: Bool
+    // `booked` is only present on the slot-LIST endpoint's response wrapper
+    // (viewingSlotResponse computes it server-side). When this slot is nested
+    // inside a ViewingRequest (Preload("Slot")), it's the raw Go ViewingSlot
+    // model, which has no `booked` key at all. Must stay optional.
+    let booked: Bool?
 
     func asViewingSlot() -> ViewingSlot {
-        ViewingSlot(id: id, propertyId: propertyId, startTime: startTime, endTime: endTime, booked: booked)
+        ViewingSlot(id: id, propertyId: propertyId, startTime: startTime, endTime: endTime, booked: booked ?? false)
     }
 }
 

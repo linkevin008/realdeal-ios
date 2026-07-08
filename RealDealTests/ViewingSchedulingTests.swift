@@ -285,6 +285,17 @@ final class ViewingSchedulingTests: XCTestCase {
         let booked: Bool
     }
 
+    // Mirrors the nested `Slot` on a ViewingRequest: the raw models.ViewingSlot
+    // as preloaded by GORM, which has NO computed "booked" key (that field only
+    // exists on the slot-LIST endpoint's viewingSlotResponse wrapper).
+    private struct WireNestedViewingSlot: Decodable, Equatable {
+        let id: String
+        let propertyId: String
+        let startTime: Date
+        let endTime: Date
+        let booked: Bool?
+    }
+
     private struct WireViewingRequest: Decodable {
         let id: String
         let slotId: String
@@ -293,7 +304,7 @@ final class ViewingSchedulingTests: XCTestCase {
         let message: String?
         let status: String
         let createdAt: Date
-        let slot: WireViewingSlot?
+        let slot: WireNestedViewingSlot?
     }
 
     func testDecodesViewingSlotListEnvelopeFromRealGoResponseShape() throws {
@@ -327,7 +338,9 @@ final class ViewingSchedulingTests: XCTestCase {
 
     func testDecodesViewingRequestEnvelopeFromRealGoResponseShape() throws {
         // Mirrors ViewingHandler.RequestViewing: {"data": models.ViewingRequest, "message": "..."}
-        // with a preloaded nested Slot (snake_case json tags throughout).
+        // with a preloaded nested Slot (snake_case json tags throughout). The nested slot is
+        // the raw models.ViewingSlot (GORM Preload("Slot")), which has NO "booked" key —
+        // that key is only added by the slot-LIST endpoint's viewingSlotResponse wrapper.
         let json = """
         {
           "data": {
@@ -345,8 +358,7 @@ final class ViewingSchedulingTests: XCTestCase {
               "start_time": "2026-08-01T14:00:00Z",
               "end_time": "2026-08-01T15:00:00Z",
               "created_at": "2026-07-01T00:00:00Z",
-              "updated_at": "2026-07-01T00:00:00Z",
-              "booked": true
+              "updated_at": "2026-07-01T00:00:00Z"
             }
           },
           "message": "viewing request submitted"
@@ -361,6 +373,6 @@ final class ViewingSchedulingTests: XCTestCase {
         XCTAssertEqual(envelope.data.buyerId, "buyer-1")
         XCTAssertEqual(envelope.data.status, "pending")
         XCTAssertEqual(envelope.data.slot?.propertyId, "prop-1")
-        XCTAssertEqual(envelope.data.slot?.booked, true)
+        XCTAssertEqual(envelope.data.slot?.booked, nil)
     }
 }

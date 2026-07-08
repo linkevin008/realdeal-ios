@@ -209,6 +209,7 @@ struct MainTabView: View {
                     propertyRepository: propertyRepository,
                     userProfileRepository: userProfileRepository,
                     favoritesRepository: favoritesRepository,
+                    remoteDataSource: remoteDataSource,
                     currentUserId: currentUserId
                 )
             )
