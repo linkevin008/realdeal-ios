@@ -13,6 +13,11 @@ struct ProfileView: View {
     var onSetupProfile: (() -> Void)? = nil
     /// Signs the current user out (own profile only).
     var onSignOut: (() -> Void)? = nil
+    /// Backs the "My Contracts" row (own profile only) — the guaranteed entry
+    /// point to the contract wizard for both parties, since an accepted
+    /// property leaves search and PropertyDetailView may be unreachable.
+    var remoteDataSource: RemoteDataSourceProtocol? = nil
+    var currentUserId: String? = nil
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
@@ -164,6 +169,30 @@ struct ProfileView: View {
                 visibilitySettingsView(displayProfile)
             }
             
+            // My Contracts (only for own profile)
+            if isOwnProfile, let remoteDataSource, let currentUserId {
+                NavigationLink {
+                    MyContractsView(
+                        viewModel: MyContractsViewModel(remoteDataSource: remoteDataSource),
+                        currentUserId: currentUserId,
+                        remoteDataSource: remoteDataSource
+                    )
+                } label: {
+                    HStack {
+                        Text("My Contracts")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundColor(.blue)
+                    .cornerRadius(10)
+                }
+            }
+
             // Sign Out (only for own profile)
             if isOwnProfile, let onSignOut {
                 Button {

@@ -4,6 +4,11 @@ import SwiftUI
 struct SellerOffersView: View {
     @StateObject var viewModel: SellerOffersViewModel
     let property: Property
+    /// Needed to build ContractWizardViewModel for the "View Contract" row on
+    /// an accepted offer — the wizard derives buyer/seller role by comparing
+    /// this against the contract's buyerId/sellerId.
+    let currentUserId: String
+    let remoteDataSource: RemoteDataSourceProtocol
 
     var body: some View {
         Group {
@@ -21,10 +26,25 @@ struct SellerOffersView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(viewModel.offers) { offer in
-                    OfferRow(offer: offer) {
-                        Task { await viewModel.accept(offer: offer) }
-                    } onReject: {
-                        Task { await viewModel.reject(offer: offer) }
+                    if offer.status == .accepted {
+                        NavigationLink {
+                            ContractWizardView(
+                                viewModel: ContractWizardViewModel(
+                                    propertyId: property.id,
+                                    offerId: offer.id,
+                                    currentUserId: currentUserId,
+                                    remoteDataSource: remoteDataSource
+                                )
+                            )
+                        } label: {
+                            OfferRow(offer: offer, onAccept: {}, onReject: {})
+                        }
+                    } else {
+                        OfferRow(offer: offer) {
+                            Task { await viewModel.accept(offer: offer) }
+                        } onReject: {
+                            Task { await viewModel.reject(offer: offer) }
+                        }
                     }
                 }
                 .listStyle(.plain)

@@ -171,7 +171,11 @@ struct PropertyDetailView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            if !viewModel.isSeller && viewModel.property.status == .active {
+            // An accepted offer means the property left search (status ->
+            // pending) but the buyer still needs a path to the contract from
+            // here if they reach detail some other way (favorites, direct
+            // link, etc.) — so the bar stays visible in that case too.
+            if !viewModel.isSeller && (viewModel.property.status == .active || viewModel.myAcceptedOffer != nil) {
                 actionBar
             }
         }
@@ -195,7 +199,28 @@ struct PropertyDetailView: View {
         VStack(spacing: 0) {
             Divider()
             VStack(spacing: 8) {
-                if viewModel.myPendingOffer != nil {
+                if let acceptedOffer = viewModel.myAcceptedOffer {
+                    if let remote = viewModel.remoteDataSource, let userId = viewModel.currentUserId {
+                        NavigationLink {
+                            ContractWizardView(
+                                viewModel: ContractWizardViewModel(
+                                    propertyId: viewModel.property.id,
+                                    offerId: acceptedOffer.id,
+                                    currentUserId: userId,
+                                    remoteDataSource: remote
+                                )
+                            )
+                        } label: {
+                            Text("View Contract")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                        }
+                    }
+                } else if viewModel.myPendingOffer != nil {
                     HStack {
                         Image(systemName: "clock.fill")
                             .foregroundColor(.orange)
@@ -218,7 +243,9 @@ struct PropertyDetailView: View {
                     }
                 }
 
-                viewingActionRow
+                if viewModel.myAcceptedOffer == nil {
+                    viewingActionRow
+                }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)

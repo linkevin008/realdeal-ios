@@ -64,6 +64,24 @@ protocol RemoteDataSourceProtocol {
     func cancelViewingRequest(requestId: String) async throws
     /// Buyer: all of their own viewing requests across listings.
     func fetchMyViewingRequests() async throws -> [ViewingRequest]
+
+    // Contracts
+    /// Fetches the contract created automatically when the given offer was
+    /// accepted. Caller must be the buyer or seller party.
+    func getContract(propertyId: String, offerId: String) async throws -> Contract
+    /// Either party proposes/replaces terms. The proposer auto-agrees; this
+    /// voids the other party's agreement and both signatures (status -> draft).
+    func proposeTerms(propertyId: String, offerId: String, moveInDate: Date?, transferDate: Date?, conditions: String) async throws -> Contract
+    /// The non-proposing party agrees to the current terms. Advances to
+    /// terms_agreed once both parties have agreed.
+    func agreeTerms(propertyId: String, offerId: String) async throws -> Contract
+    /// Signs the contract (only reachable once both parties have agreed).
+    /// Advances to executed once both signatures are present.
+    func signContract(propertyId: String, offerId: String) async throws -> Contract
+    /// Either party cancels the contract any time before it's executed.
+    func cancelContract(propertyId: String, offerId: String) async throws -> Contract
+    /// All contracts (as buyer or seller) for the current user.
+    func fetchMyContracts() async throws -> [Contract]
 }
 
 extension RemoteDataSourceProtocol {

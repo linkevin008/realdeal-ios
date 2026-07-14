@@ -285,6 +285,65 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
         )
         return envelope.data.map { $0.asViewingRequest() }
     }
+
+    // MARK: - Contracts
+
+    func getContract(propertyId: String, offerId: String) async throws -> Contract {
+        let envelope: Envelope<APIContract> = try await client.get(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)/contract",
+            requiresAuth: true
+        )
+        return envelope.data.asContract()
+    }
+
+    func proposeTerms(propertyId: String, offerId: String, moveInDate: Date?, transferDate: Date?, conditions: String) async throws -> Contract {
+        struct Body: Encodable {
+            let moveInDate: Date?
+            let transferDate: Date?
+            let conditions: String
+        }
+        let envelope: Envelope<APIContract> = try await client.put(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)/contract/terms",
+            body: Body(moveInDate: moveInDate, transferDate: transferDate, conditions: conditions),
+            requiresAuth: true
+        )
+        return envelope.data.asContract()
+    }
+
+    func agreeTerms(propertyId: String, offerId: String) async throws -> Contract {
+        let envelope: Envelope<APIContract> = try await client.post(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)/contract/agree-terms",
+            body: EmptyBody(),
+            requiresAuth: true
+        )
+        return envelope.data.asContract()
+    }
+
+    func signContract(propertyId: String, offerId: String) async throws -> Contract {
+        let envelope: Envelope<APIContract> = try await client.post(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)/contract/sign",
+            body: EmptyBody(),
+            requiresAuth: true
+        )
+        return envelope.data.asContract()
+    }
+
+    func cancelContract(propertyId: String, offerId: String) async throws -> Contract {
+        let envelope: Envelope<APIContract> = try await client.post(
+            "api/v1/properties/\(propertyId)/offers/\(offerId)/contract/cancel",
+            body: EmptyBody(),
+            requiresAuth: true
+        )
+        return envelope.data.asContract()
+    }
+
+    func fetchMyContracts() async throws -> [Contract] {
+        let envelope: Envelope<[APIContract]> = try await client.get(
+            "api/v1/users/me/contracts",
+            requiresAuth: true
+        )
+        return envelope.data.map { $0.asContract() }
+    }
 }
 
 // MARK: - Private DTOs
@@ -439,6 +498,50 @@ private struct APIViewingRequest: Decodable {
             createdAt: createdAt,
             slot: slot?.asViewingSlot(),
             buyer: buyer.map { UserProfile(apiUser: $0) },
+            property: property?.asProperty()
+        )
+    }
+}
+
+private struct APIContract: Decodable {
+    let id: String
+    let offerId: String
+    let propertyId: String
+    let sellerId: String
+    let buyerId: String
+    let status: String
+    let moveInDate: Date?
+    let transferDate: Date?
+    let conditions: String
+    let termsProposedBy: String?
+    let buyerAgreedAt: Date?
+    let sellerAgreedAt: Date?
+    let buyerSignedAt: Date?
+    let sellerSignedAt: Date?
+    let executionDeadline: Date
+    let createdAt: Date
+    let updatedAt: Date
+    let property: APIProperty?
+
+    func asContract() -> Contract {
+        Contract(
+            id: id,
+            offerId: offerId,
+            propertyId: propertyId,
+            sellerId: sellerId,
+            buyerId: buyerId,
+            status: ContractStatus(rawValue: status) ?? .draft,
+            moveInDate: moveInDate,
+            transferDate: transferDate,
+            conditions: conditions,
+            termsProposedBy: termsProposedBy,
+            buyerAgreedAt: buyerAgreedAt,
+            sellerAgreedAt: sellerAgreedAt,
+            buyerSignedAt: buyerSignedAt,
+            sellerSignedAt: sellerSignedAt,
+            executionDeadline: executionDeadline,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             property: property?.asProperty()
         )
     }

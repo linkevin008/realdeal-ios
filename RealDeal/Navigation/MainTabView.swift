@@ -128,7 +128,8 @@ struct MainTabView: View {
                         userId: userId,
                         setupWizardActive: authViewModel.needsProfileSetup,
                         onSetupProfile: { authViewModel.needsProfileSetup = true },
-                        onSignOut: { Task { await authViewModel.signOut() } }
+                        onSignOut: { Task { await authViewModel.signOut() } },
+                        remoteDataSource: remoteDataSource
                     )
                     .navigationDestination(for: NavigationCoordinator.Destination.self) { destination in
                         destinationView(for: destination)
@@ -268,6 +269,7 @@ private struct ProfileTab: View {
     let setupWizardActive: Bool
     let onSetupProfile: () -> Void
     let onSignOut: () -> Void
+    let remoteDataSource: RemoteDataSourceProtocol
     @StateObject private var viewModel: ProfileViewModel
 
     init(
@@ -275,12 +277,14 @@ private struct ProfileTab: View {
         userId: String,
         setupWizardActive: Bool,
         onSetupProfile: @escaping () -> Void,
-        onSignOut: @escaping () -> Void
+        onSignOut: @escaping () -> Void,
+        remoteDataSource: RemoteDataSourceProtocol
     ) {
         self.userId = userId
         self.setupWizardActive = setupWizardActive
         self.onSetupProfile = onSetupProfile
         self.onSignOut = onSignOut
+        self.remoteDataSource = remoteDataSource
         _viewModel = StateObject(wrappedValue: ProfileViewModel(repository: repository))
     }
 
@@ -289,7 +293,9 @@ private struct ProfileTab: View {
             viewModel: viewModel,
             isOwnProfile: true,
             onSetupProfile: onSetupProfile,
-            onSignOut: onSignOut
+            onSignOut: onSignOut,
+            remoteDataSource: remoteDataSource,
+            currentUserId: userId
         )
             // Keyed on the wizard flag too: the tab loads while the setup wizard
             // covers it, so it must reload when the wizard dismisses or it would

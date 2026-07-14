@@ -68,7 +68,9 @@ struct MyListingsView: View {
                 NavigationView {
                     SellerOffersView(
                         viewModel: SellerOffersViewModel(remoteDataSource: viewModel.remoteDataSource),
-                        property: property
+                        property: property,
+                        currentUserId: viewModel.currentUserId,
+                        remoteDataSource: viewModel.remoteDataSource
                     )
                 }
             }

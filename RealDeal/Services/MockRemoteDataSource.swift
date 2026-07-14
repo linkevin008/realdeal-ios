@@ -12,9 +12,14 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
     private var offers: [String: Offer] = [:]
     private var viewingSlots: [String: ViewingSlot] = [:]
     private var viewingRequests: [String: ViewingRequest] = [:]
+    private var contracts: [String: Contract] = [:]
     /// Buyer ID stamped on mock-submitted viewing requests, mirroring how
     /// submitOffer stamps "mock-buyer" — dev/preview flows only.
     var mockCurrentBuyerId: String = "mock-buyer"
+    /// The "caller" identity used by contract methods to determine buyer vs.
+    /// seller role, since contracts (unlike offers/viewings) are mutated by
+    /// both parties. Dev/preview + test flows only.
+    var mockCurrentUserId: String = "mock-buyer"
     
     // MARK: - Configuration
     private let simulateNetworkDelay: Bool
@@ -395,6 +400,185 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
+    // MARK: - Contracts
+
+    private func findContract(propertyId: String, offerId: String) throws -> Contract {
+        guard let contract = contracts.values.first(where: { $0.propertyId == propertyId && $0.offerId == offerId }) else {
+            throw MockDataSourceError.notFound
+        }
+        return contract
+    }
+
+    private static let terminalStatuses: Set<ContractStatus> = [.executed, .cancelled, .expired]
+
+    func getContract(propertyId: String, offerId: String) async throws -> Contract {
+        await simulateDelay()
+        return try findContract(propertyId: propertyId, offerId: offerId)
+    }
+
+    /// Mirrors ContractHandler.ProposeTerms: proposer auto-agrees; resets the
+    /// other party's agreement and both signatures; status back to draft.
+    func proposeTerms(propertyId: String, offerId: String, moveInDate: Date?, transferDate: Date?, conditions: String) async throws -> Contract {
+        await simulateDelay()
+        let existing = try findContract(propertyId: propertyId, offerId: offerId)
+        guard !Self.terminalStatuses.contains(existing.status) else {
+            throw MockDataSourceError.contractNotActive
+        }
+        let isBuyer = mockCurrentUserId == existing.buyerId
+        let updated = Contract(
+            id: existing.id,
+            offerId: existing.offerId,
+            propertyId: existing.propertyId,
+            sellerId: existing.sellerId,
+            buyerId: existing.buyerId,
+            status: .draft,
+            moveInDate: moveInDate,
+            transferDate: transferDate,
+            conditions: conditions,
+            termsProposedBy: mockCurrentUserId,
+            buyerAgreedAt: isBuyer ? Date() : nil,
+            sellerAgreedAt: isBuyer ? nil : Date(),
+            buyerSignedAt: nil,
+            sellerSignedAt: nil,
+            executionDeadline: existing.executionDeadline,
+            createdAt: existing.createdAt,
+            updatedAt: Date(),
+            property: existing.property
+        )
+        contracts[existing.id] = updated
+        return updated
+    }
+
+    /// Mirrors ContractHandler.AgreeTerms: advances to terms_agreed once both
+    /// parties have agreed to the current terms.
+    func agreeTerms(propertyId: String, offerId: String) async throws -> Contract {
+        await simulateDelay()
+        let existing = try findContract(propertyId: propertyId, offerId: offerId)
+        guard !Self.terminalStatuses.contains(existing.status) else {
+            throw MockDataSourceError.contractNotActive
+        }
+        guard existing.termsProposedBy != nil else {
+            throw MockDataSourceError.termsNotProposed
+        }
+        let isBuyer = mockCurrentUserId == existing.buyerId
+        let alreadyAgreed = isBuyer ? existing.buyerAgreedAt != nil : existing.sellerAgreedAt != nil
+        guard !alreadyAgreed else {
+            throw MockDataSourceError.alreadyAgreed
+        }
+        let now = Date()
+        let buyerAgreedAt = isBuyer ? now : existing.buyerAgreedAt
+        let sellerAgreedAt = isBuyer ? existing.sellerAgreedAt : now
+        let bothAgreed = buyerAgreedAt != nil && sellerAgreedAt != nil
+        let updated = Contract(
+            id: existing.id,
+            offerId: existing.offerId,
+            propertyId: existing.propertyId,
+            sellerId: existing.sellerId,
+            buyerId: existing.buyerId,
+            status: bothAgreed ? .termsAgreed : existing.status,
+            moveInDate: existing.moveInDate,
+            transferDate: existing.transferDate,
+            conditions: existing.conditions,
+            termsProposedBy: existing.termsProposedBy,
+            buyerAgreedAt: buyerAgreedAt,
+            sellerAgreedAt: sellerAgreedAt,
+            buyerSignedAt: existing.buyerSignedAt,
+            sellerSignedAt: existing.sellerSignedAt,
+            executionDeadline: existing.executionDeadline,
+            createdAt: existing.createdAt,
+            updatedAt: now,
+            property: existing.property
+        )
+        contracts[existing.id] = updated
+        return updated
+    }
+
+    /// Mirrors ContractHandler.Sign: only reachable from terms_agreed/
+    /// buyer_signed/seller_signed; executed once both signatures present.
+    func signContract(propertyId: String, offerId: String) async throws -> Contract {
+        await simulateDelay()
+        let existing = try findContract(propertyId: propertyId, offerId: offerId)
+        guard !Self.terminalStatuses.contains(existing.status) else {
+            throw MockDataSourceError.contractNotActive
+        }
+        switch existing.status {
+        case .termsAgreed, .buyerSigned, .sellerSigned:
+            break
+        default:
+            throw MockDataSourceError.termsNotAgreed
+        }
+        let isBuyer = mockCurrentUserId == existing.buyerId
+        if isBuyer, existing.buyerSignedAt != nil { throw MockDataSourceError.alreadySigned }
+        if !isBuyer, existing.sellerSignedAt != nil { throw MockDataSourceError.alreadySigned }
+
+        let now = Date()
+        let buyerSignedAt = isBuyer ? now : existing.buyerSignedAt
+        let sellerSignedAt = isBuyer ? existing.sellerSignedAt : now
+        let newStatus: ContractStatus = (buyerSignedAt != nil && sellerSignedAt != nil)
+            ? .executed
+            : (isBuyer ? .buyerSigned : .sellerSigned)
+        let updated = Contract(
+            id: existing.id,
+            offerId: existing.offerId,
+            propertyId: existing.propertyId,
+            sellerId: existing.sellerId,
+            buyerId: existing.buyerId,
+            status: newStatus,
+            moveInDate: existing.moveInDate,
+            transferDate: existing.transferDate,
+            conditions: existing.conditions,
+            termsProposedBy: existing.termsProposedBy,
+            buyerAgreedAt: existing.buyerAgreedAt,
+            sellerAgreedAt: existing.sellerAgreedAt,
+            buyerSignedAt: buyerSignedAt,
+            sellerSignedAt: sellerSignedAt,
+            executionDeadline: existing.executionDeadline,
+            createdAt: existing.createdAt,
+            updatedAt: now,
+            property: existing.property
+        )
+        contracts[existing.id] = updated
+        return updated
+    }
+
+    /// Mirrors ContractHandler.Cancel: terminal, reachable any time before executed.
+    func cancelContract(propertyId: String, offerId: String) async throws -> Contract {
+        await simulateDelay()
+        let existing = try findContract(propertyId: propertyId, offerId: offerId)
+        guard !Self.terminalStatuses.contains(existing.status) else {
+            throw MockDataSourceError.contractNotActive
+        }
+        let updated = Contract(
+            id: existing.id,
+            offerId: existing.offerId,
+            propertyId: existing.propertyId,
+            sellerId: existing.sellerId,
+            buyerId: existing.buyerId,
+            status: .cancelled,
+            moveInDate: existing.moveInDate,
+            transferDate: existing.transferDate,
+            conditions: existing.conditions,
+            termsProposedBy: existing.termsProposedBy,
+            buyerAgreedAt: existing.buyerAgreedAt,
+            sellerAgreedAt: existing.sellerAgreedAt,
+            buyerSignedAt: existing.buyerSignedAt,
+            sellerSignedAt: existing.sellerSignedAt,
+            executionDeadline: existing.executionDeadline,
+            createdAt: existing.createdAt,
+            updatedAt: Date(),
+            property: existing.property
+        )
+        contracts[existing.id] = updated
+        return updated
+    }
+
+    func fetchMyContracts() async throws -> [Contract] {
+        await simulateDelay()
+        return contracts.values
+            .filter { $0.buyerId == mockCurrentUserId || $0.sellerId == mockCurrentUserId }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     // MARK: - Test Helpers
     
     /// Seed the mock data source with test data
@@ -403,7 +587,8 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         userProfiles: [UserProfile] = [],
         favorites: [Favorite] = [],
         viewingSlots: [ViewingSlot] = [],
-        viewingRequests: [ViewingRequest] = []
+        viewingRequests: [ViewingRequest] = [],
+        contracts: [Contract] = []
     ) {
         for property in properties {
             self.properties[property.id] = property
@@ -420,6 +605,9 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         for request in viewingRequests {
             self.viewingRequests[request.id] = request
         }
+        for contract in contracts {
+            self.contracts[contract.id] = contract
+        }
     }
 
     /// Clear all data from the mock data source
@@ -430,6 +618,7 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         images.removeAll()
         viewingSlots.removeAll()
         viewingRequests.removeAll()
+        contracts.removeAll()
     }
     
     /// Get all stored properties (for testing)
@@ -455,7 +644,12 @@ enum MockDataSourceError: Error, LocalizedError {
     case propertyNotFound
     case userNotFound
     case invalidData
-    
+    case contractNotActive
+    case termsNotProposed
+    case alreadyAgreed
+    case termsNotAgreed
+    case alreadySigned
+
     var errorDescription: String? {
         switch self {
         case .notFound:
@@ -466,6 +660,16 @@ enum MockDataSourceError: Error, LocalizedError {
             return "User not found"
         case .invalidData:
             return "Invalid data provided"
+        case .contractNotActive:
+            return "Contract is no longer active"
+        case .termsNotProposed:
+            return "No terms have been proposed yet"
+        case .alreadyAgreed:
+            return "You have already agreed to the current terms"
+        case .termsNotAgreed:
+            return "Terms have not been agreed to yet"
+        case .alreadySigned:
+            return "You have already signed this contract"
         }
     }
 }

@@ -16,6 +16,7 @@ class PropertyDetailViewModel: ObservableObject {
     @Published var isFavorite: Bool = false
     @Published var isShowingOfferSheet: Bool = false
     @Published var myPendingOffer: Offer?
+    @Published var myAcceptedOffer: Offer?
     @Published var isShowingViewingSheet: Bool = false
     @Published var myViewingRequest: ViewingRequest?
     @Published var isCancellingViewingRequest: Bool = false
@@ -56,6 +57,11 @@ class PropertyDetailViewModel: ObservableObject {
         do {
             let myOffers = try await remote.fetchMyOffers()
             myPendingOffer = myOffers.first { $0.propertyId == property.id && $0.status == .pending }
+            // An accepted offer means the listing has a contract to sign — this is
+            // the buyer's primary path to the wizard while the property is still
+            // reachable (it drops out of search once pending, but detail may still
+            // be reachable e.g. via favorites/recently-viewed).
+            myAcceptedOffer = myOffers.first { $0.propertyId == property.id && $0.status == .accepted }
         } catch {
             // Non-critical
         }
