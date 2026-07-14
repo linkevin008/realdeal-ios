@@ -86,6 +86,16 @@ final class APIClient {
     static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.keyEncodingStrategy = .convertToSnakeCase
+        // Go binds date fields into time.Time/*time.Time, which require RFC3339
+        // strings on the wire. Without an explicit strategy here, JSONEncoder
+        // defaults to .deferredToDate (a Double of seconds since 2001), which
+        // the Go backend can't unmarshal — every request body carrying a Date
+        // (e.g. viewing-slot start/end times, contract move-in/transfer dates)
+        // would 400 against the live server. .iso8601 produces e.g.
+        // "2026-07-15T00:00:00Z", which Go's time.Time accepts.
+        // (Decoding is unaffected — see `decoder` above, which already uses a
+        // custom fractional-seconds RFC3339 strategy to parse Go's responses.)
+        e.dateEncodingStrategy = .iso8601
         return e
     }()
 
