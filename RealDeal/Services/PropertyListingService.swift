@@ -101,9 +101,6 @@ class PropertyListingService {
         try await repository.deleteProperty(id: id)
     }
     
-    /// Fetch properties for a specific seller
-    /// - Parameter sellerId: The seller's user ID
-    /// - Returns: Array of properties owned by the seller
     /// Countries listings can be created in (with their subdivisions). Falls
     /// back to the launch list if the backend is unreachable so the form is
     /// never empty — empty subdivisions degrade to free-text entry.
@@ -113,9 +110,14 @@ class PropertyListingService {
                 SupportedCountry(code: "CA", subdivisions: [])]
     }
 
+    /// Fetch properties for a specific seller — across active/pending/sold,
+    /// not just active listings, so a seller's own listing stays visible in
+    /// My Listings once an offer is accepted (pending) or the sale completes
+    /// (sold).
+    /// - Parameter sellerId: The seller's user ID
+    /// - Returns: Array of properties owned by the seller
     func fetchSellerProperties(sellerId: String) async throws -> [Property] {
-        let allProperties = try await repository.fetchProperties(filters: nil)
-        return allProperties.filter { $0.sellerId == sellerId }
+        try await repository.fetchMyListings(sellerId: sellerId)
     }
     
     /// Update property status

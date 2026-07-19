@@ -58,6 +58,37 @@ final class SellerListingManagementTests: XCTestCase {
         XCTAssertTrue(statuses.contains(.sold))
     }
     
+    func testFetchSellerPropertiesIncludesActivePendingAndSoldButExcludesDeletedAndOtherSellers() async throws {
+        // Given: the seller has an active, pending, sold, and deleted listing,
+        // plus another seller has an active listing
+        let sellerId = "seller1"
+        let otherSellerId = "seller2"
+
+        let active = createTestProperty(sellerId: sellerId, status: .active)
+        let pending = createTestProperty(sellerId: sellerId, status: .pending)
+        let sold = createTestProperty(sellerId: sellerId, status: .sold)
+        let deleted = createTestProperty(sellerId: sellerId, status: .deleted)
+        let otherSellerActive = createTestProperty(sellerId: otherSellerId, status: .active)
+
+        _ = try await mockRepository.createProperty(active)
+        _ = try await mockRepository.createProperty(pending)
+        _ = try await mockRepository.createProperty(sold)
+        _ = try await mockRepository.createProperty(deleted)
+        _ = try await mockRepository.createProperty(otherSellerActive)
+
+        // When: fetching listings for the seller (this is the path that feeds
+        // My Listings, which previously dropped pending/sold via the
+        // active-only search endpoint)
+        let result = try await listingService.fetchSellerProperties(sellerId: sellerId)
+
+        // Then: exactly the seller's active/pending/sold listings come back —
+        // no deleted listing, no other seller's listing
+        XCTAssertEqual(Set(result.map { $0.id }), Set([active.id, pending.id, sold.id]))
+        XCTAssertTrue(result.allSatisfy { $0.sellerId == sellerId })
+        XCTAssertFalse(result.contains { $0.status == .deleted })
+        XCTAssertFalse(result.contains { $0.id == otherSellerActive.id })
+    }
+
     func testFetchSellerPropertiesReturnsEmptyForSellerWithNoListings() async throws {
         // Given: Properties from one seller
         let seller1Id = "seller1"
@@ -73,6 +104,25 @@ final class SellerListingManagementTests: XCTestCase {
         XCTAssertEqual(seller2Properties.count, 0)
     }
     
+    // MARK: - Test MockRemoteDataSource.fetchMyListings directly
+
+    func testMockRemoteDataSourceFetchMyListingsReturnsCurrentUserActivePendingSoldOnly() async throws {
+        let remote = MockRemoteDataSource(simulateNetworkDelay: false)
+        remote.mockCurrentUserId = "seller1"
+
+        let active = createTestProperty(sellerId: "seller1", status: .active)
+        let pending = createTestProperty(sellerId: "seller1", status: .pending)
+        let sold = createTestProperty(sellerId: "seller1", status: .sold)
+        let deleted = createTestProperty(sellerId: "seller1", status: .deleted)
+        let otherSellerActive = createTestProperty(sellerId: "seller2", status: .active)
+
+        remote.seedData(properties: [active, pending, sold, deleted, otherSellerActive])
+
+        let result = try await remote.fetchMyListings()
+
+        XCTAssertEqual(Set(result.map { $0.id }), Set([active.id, pending.id, sold.id]))
+    }
+
     // MARK: - Test Status Management (Requirement 2.5)
     
     func testUpdatePropertyStatusChangesStatus() async throws {

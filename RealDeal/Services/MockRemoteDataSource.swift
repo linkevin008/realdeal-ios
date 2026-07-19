@@ -114,6 +114,16 @@ class MockRemoteDataSource: RemoteDataSourceProtocol {
         return results.filter { $0.status == .active }
     }
     
+    /// Mirrors the real endpoint: the current mock user's own listings across
+    /// active/pending/sold (deleted properties don't persist in the mock store
+    /// since `deleteProperty` removes them outright).
+    func fetchMyListings() async throws -> [Property] {
+        await simulateDelay()
+        return properties.values
+            .filter { $0.sellerId == mockCurrentUserId && $0.status != .deleted }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     func getProperty(id: String) async throws -> Property? {
         await simulateDelay()
         return properties[id]

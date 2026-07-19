@@ -65,6 +65,14 @@ final class APIRemoteDataSource: RemoteDataSourceProtocol {
         return envelope.data.map { $0.asProperty() }
     }
 
+    func fetchMyListings() async throws -> [Property] {
+        let envelope: ListEnvelope<APIProperty> = try await client.get(
+            "api/v1/users/me/listings",
+            requiresAuth: true
+        )
+        return envelope.data.map { $0.asProperty() }
+    }
+
     func getProperty(id: String) async throws -> Property? {
         let envelope: Envelope<APIProperty> = try await client.get("api/v1/properties/\(id)")
         return envelope.data.asProperty()

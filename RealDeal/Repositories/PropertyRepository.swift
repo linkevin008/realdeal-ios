@@ -66,6 +66,41 @@ class PropertyRepository: PropertyRepositoryProtocol {
         try await remoteDataSource.fetchSupportedCountries()
     }
 
+    func fetchMyListings(sellerId: String) async throws -> [Property] {
+        // Remote-first — no CREA involvement, this is the seller's own
+        // account data, not aggregated listing search.
+        if networkMonitor.isConnected {
+            do {
+                let properties = try await remoteDataSource.fetchMyListings()
+                try await localDataSource.saveProperties(properties)
+                return properties
+            } catch let error as AppError {
+                // Fall back to the local cache filtered by seller, mirroring
+                // fetchProperties' offline pattern. The cache excludes sold
+                // properties (see LocalDataSource), so this is a degraded
+                // fallback — good enough for the offline case.
+                do {
+                    let cached = try await localDataSource.fetchProperties(
+                        filters: PropertyFilters(sellerId: sellerId)
+                    )
+                    return cached.filter { $0.sellerId == sellerId }
+                } catch {
+                    throw error
+                }
+            } catch {
+                let cached = try await localDataSource.fetchProperties(
+                    filters: PropertyFilters(sellerId: sellerId)
+                )
+                return cached.filter { $0.sellerId == sellerId }
+            }
+        } else {
+            let cached = try await localDataSource.fetchProperties(
+                filters: PropertyFilters(sellerId: sellerId)
+            )
+            return cached.filter { $0.sellerId == sellerId }
+        }
+    }
+
     func createProperty(_ property: Property) async throws -> Property {
         // Save locally first for offline support
         try await localDataSource.saveProperty(property)

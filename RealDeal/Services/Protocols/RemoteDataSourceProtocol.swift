@@ -21,6 +21,11 @@ protocol RemoteDataSourceProtocol {
 
     // Properties
     func fetchProperties(filters: PropertyFilters?) async throws -> [Property]
+    /// The caller's own listings across active/pending/sold (deleted excluded)
+    /// — unlike `fetchProperties`, which only surfaces active listings via the
+    /// lookup search. Backs My Listings so a seller's listing stays visible
+    /// once an offer is accepted (pending) or the sale completes (sold).
+    func fetchMyListings() async throws -> [Property]
     func getProperty(id: String) async throws -> Property?
     func createProperty(_ property: Property) async throws -> Property
     func updateProperty(_ property: Property) async throws
