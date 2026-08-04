@@ -1,5 +1,13 @@
 # Context
 
+## My Listings shows pending/sold listings 19-07-2026
+- `fetchMyListings()` added to RemoteDataSourceProtocol (API impl hits the new authed `GET /api/v1/users/me/listings`, realdeal-api bb6adad; mock returns the current user's non-deleted listings newest-first)
+- `PropertyRepositoryProtocol.fetchMyListings(sellerId:)` with a default extension (fetch-all + filter by seller, excluding deleted) so other conformers keep compiling; `PropertyRepository` overrides remote-first with NO CREA involvement (this is account data, not listing search) and falls back to the seller-filtered local cache offline
+- `PropertyListingService.fetchSellerProperties` now delegates to the repository method — the old fetch-everything-from-active-only-search-then-filter approach is gone (that was the bug: an accepted listing goes pending, leaves the search feed, and disappeared from My Listings along with its Offers path)
+- No UI work needed: `MyListingsView` already renders StatusBadge + per-status filter chips, so pending/sold display correctly once the data arrives
+- 2 new tests assert exact id-set membership (deleted and other-seller listings excluded); 301 green; evaluator APPROVE
+- Verified live: seller's My Listings shows "789 Pine Street" with a Pending badge and working Offers swipe action — the exact case that came up empty during the contract walkthrough
+
 ## Contract/signing wizard + RFC3339 date encoding 14-07-2026
 - `ContractWizardView`: state-driven (not step-driven) wizard against the contract API — progress dots (Terms/Agreement/Signatures), deadline countdown, terms display with propose/edit form (re-proposal warning: voids other party's agreement + signatures), role-relative Agreement/Signing sections, documents stub row ("Purchase Agreement — preview unavailable (MVP)"), cancel with confirmation, terminal screens; pull-to-refresh + toolbar refresh
 - Entry points: buyer's PropertyDetailView (accepted offer keeps the action bar alive after the listing leaves search), seller's accepted offer rows in SellerOffersView, and **My Contracts** on the own-profile screen (fed by `GET /users/me/contracts`) — the guaranteed path for both parties
