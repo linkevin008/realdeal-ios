@@ -1,156 +1,77 @@
+# Current State
+
+*Rewrite this section after each task — it is the first thing a new session reads.*
+
+**App**: SwiftUI, 5 tabs — Search (browse + text search + filters), Map, Favorites, My Listings (sellers), Profile. Points at `http://localhost:8080` (the gateway) in dev; the same base URL will point at the ALB once deployed.
+
+**Built and live-verified**: auth + post-signup profile wizard + sign-out · listing creation (country/state dropdowns from the backend, geocoded coordinates, required specs, photo upload via presign) · search with server-side filters · offers (submit, seller accept/reject) · viewings (seller slots, buyer requests) · **contract signing wizard** (terms → agree → sign → executed, three entry points incl. My Contracts on Profile) · My Listings across active/pending/sold.
+
+**Not built**: escrow/payment UI (next major slice, waits on the Stripe backend) · legal consent form · walkthrough/explainer bubbles · theming.
+
+**Known gaps**: no automated integration/UI coverage — every integration bug we've shipped was caught by hand-driving the simulator (P1 in the backlog, and the highest-value unfinished work). Contract-row polish (street names, "Signed" vs "Agreed" label) is P2.
+
+# Conventions
+
+*Hard-won rules. Each one here cost us a shipped bug.*
+
+- **NEVER declare explicit `CodingKeys` on wire DTOs or models.** `APIClient.decoder` uses `.convertFromSnakeCase`, which rewrites keys before CodingKey matching — declaring them guarantees `keyNotFound` on every real response. This shipped twice (viewing DTOs, then `APIOffer`) and mock-routed tests cannot catch it.
+- **`APIClient.encoder` uses `.iso8601`** so `Date` fields serialize as RFC3339 strings; Go's `time.Time` binding rejects the raw numbers that `.deferredToDate` produces. Any new Date-carrying request body inherits this automatically.
+- **Wire-decode tests must pipe realistic Go-shaped JSON through the REAL `APIClient.decoder`** (see `OfferWireDecodingTests`). Mock-routed tests never cross the wire boundary and prove nothing about decoding.
+- **List rows: every action button needs `.buttonStyle(.borderless)`** — default-styled Buttons in a List row all fire on a single tap (tapping Reject once accepted the offer first).
+- **Wrap a card in `Button` only when it actually has an action** (`onTap != nil`). An unconditional Button wrapper swallows taps when the card is embedded in a `NavigationLink` — this silently broke every listing tap in browse and favorites.
+- **View models belong in a `@StateObject` on a small wrapper view**, never constructed inline in a parent's `body` — inline construction replaces (and un-loads) them on every re-render. That was the root cause of the phantom "Profile Not Found".
+- **Live verification is required for UI/wiring changes.** The unit suite is structurally blind to integration bugs: 4 shipped bugs found in one smoke session (07-07), plus the My Listings gap (14-07). Green tests are necessary, not sufficient.
+- **Simulator driving**: pass the device UDID to `xcrun simctl pbcopy` when more than one simulator is booted (`booted` is ambiguous), and paste text with `cmd+v` rather than synthetic typing (which triggers the accent picker and garbles input).
+
 # Context
 
+*Newest first. Older entries live in `CONTEXT-ARCHIVE.md`.*
+
 ## My Listings shows pending/sold listings 19-07-2026
-- `fetchMyListings()` added to RemoteDataSourceProtocol (API impl hits the new authed `GET /api/v1/users/me/listings`, realdeal-api bb6adad; mock returns the current user's non-deleted listings newest-first)
-- `PropertyRepositoryProtocol.fetchMyListings(sellerId:)` with a default extension (fetch-all + filter by seller, excluding deleted) so other conformers keep compiling; `PropertyRepository` overrides remote-first with NO CREA involvement (this is account data, not listing search) and falls back to the seller-filtered local cache offline
+- `fetchMyListings()` added to RemoteDataSourceProtocol (API impl hits the authed `GET /api/v1/users/me/listings`, realdeal-api bb6adad; mock returns the current user's non-deleted listings newest-first)
+- `PropertyRepositoryProtocol.fetchMyListings(sellerId:)` with a default extension (fetch-all + filter by seller, excluding deleted) so other conformers keep compiling; `PropertyRepository` overrides remote-first with NO CREA involvement (account data, not listing search) and falls back to the seller-filtered local cache offline
 - `PropertyListingService.fetchSellerProperties` now delegates to the repository method — the old fetch-everything-from-active-only-search-then-filter approach is gone (that was the bug: an accepted listing goes pending, leaves the search feed, and disappeared from My Listings along with its Offers path)
-- No UI work needed: `MyListingsView` already renders StatusBadge + per-status filter chips, so pending/sold display correctly once the data arrives
+- No UI work needed: `MyListingsView` already renders StatusBadge + per-status filter chips
 - 2 new tests assert exact id-set membership (deleted and other-seller listings excluded); 301 green; evaluator APPROVE
-- Verified live: seller's My Listings shows "789 Pine Street" with a Pending badge and working Offers swipe action — the exact case that came up empty during the contract walkthrough
+- Verified live: seller's My Listings shows "789 Pine Street" with a Pending badge and working Offers swipe action
 
 ## Contract/signing wizard + RFC3339 date encoding 14-07-2026
-- `ContractWizardView`: state-driven (not step-driven) wizard against the contract API — progress dots (Terms/Agreement/Signatures), deadline countdown, terms display with propose/edit form (re-proposal warning: voids other party's agreement + signatures), role-relative Agreement/Signing sections, documents stub row ("Purchase Agreement — preview unavailable (MVP)"), cancel with confirmation, terminal screens; pull-to-refresh + toolbar refresh
-- Entry points: buyer's PropertyDetailView (accepted offer keeps the action bar alive after the listing leaves search), seller's accepted offer rows in SellerOffersView, and **My Contracts** on the own-profile screen (fed by `GET /users/me/contracts`) — the guaranteed path for both parties
-- Data layer: `Contract`/`ContractStatus` models + 6 protocol methods; `APIContract` DTO with NO CodingKeys (the 06-07 decode-bug convention); MockRemoteDataSource simulates the full state machine; 23 tests incl. wire-decode through the real decoder (commit c715c8f)
-- **Encoder fix** (commit 89d0c90): `APIClient.encoder` had no dateEncodingStrategy → Dates went out as raw numbers that Go's time.Time binding rejects; found by the evaluator during wizard review. One shared `.iso8601` strategy fixes contract terms AND the already-shipped viewing-slot creation bug; 4 encode-side tests pin RFC3339 strings under the right snake_case keys (299 total green)
-- **Live two-party walkthrough verified end-to-end** (real stack, two accounts): seller proposes dated terms (PUT /contract/terms → 200 — the request class that 400'd pre-fix), buyer agrees + signs via My Contracts, seller counter-signs → "Contract Executed" terminal screen; DB: status executed, both signatures, property stays pending for escrow
-- Found live and backlogged: My Listings omits the seller's own pending/sold listings (P1 — breaks the seller's offers-row path to contracts; My Contracts is the workaround); polish items (row street names, "Signed" vs "Agreed" label) as P2
-- Session note: with two booted simulators, `simctl pbcopy booted` targets ambiguously — always pass the device UDID
+- `ContractWizardView`: state-driven (not step-driven) wizard against the contract API — progress dots (Terms/Agreement/Signatures), deadline countdown, terms display with propose/edit form (re-proposal warning: voids other party's agreement + signatures), role-relative Agreement/Signing sections, documents stub row, cancel with confirmation, terminal screens; pull-to-refresh + toolbar refresh
+- Entry points: buyer's PropertyDetailView (accepted offer keeps the action bar alive after the listing leaves search), seller's accepted offer rows in SellerOffersView, and **My Contracts** on the own-profile screen (`GET /users/me/contracts`) — the guaranteed path for both parties
+- Data layer: `Contract`/`ContractStatus` models + 6 protocol methods; `APIContract` DTO with NO CodingKeys; MockRemoteDataSource simulates the full state machine; 23 tests incl. wire-decode through the real decoder (commit c715c8f)
+- **Encoder fix** (commit 89d0c90): `APIClient.encoder` had no dateEncodingStrategy → Dates went out as raw numbers that Go's time.Time binding rejects; found by the evaluator during wizard review. One shared `.iso8601` strategy fixed contract terms AND the already-shipped viewing-slot creation bug; 4 encode-side tests pin the format
+- **Live two-party walkthrough verified end-to-end** (real stack, two accounts): seller proposes dated terms (PUT /contract/terms → 200 — the request class that 400'd pre-fix), buyer agrees + signs via My Contracts, seller counter-signs → "Contract Executed"; DB: status executed, both signatures, property stays pending for escrow
+- Found live and backlogged: My Listings omitted the seller's own pending/sold listings (fixed 19-07); polish items as P2
 
 ## Live smoke test of offer + viewing flows; 4 integration bugs fixed 07-07-2026
-- First-ever live run of the full buyer↔seller funnel in the simulator against the real local stack (`make up`, seeded via curl through the gateway); all four bugs below were invisible to the 272-test unit suite because they live at integration boundaries (wire shapes, gesture composition, view nesting, dependency injection) that mock-routed tests never cross
-- **Bug 1 — nested-slot decode**: `APIViewingSlot.booked` was non-optional but `booked` only exists on the slot-LIST endpoint's computed response; the raw slot nested in viewing requests has no such key → seller's Viewings screen failed with "Failed to load viewings". Fixed: `Bool?` + `?? false` default; wire fixture corrected (it had unfaithfully included `booked` on the nested slot — fixtures must mirror the real payload per endpoint)
-- **Bug 2 — List-row double-action**: default-styled SwiftUI Buttons in List rows fire ALL row button actions on one tap. Tapping Accept on a viewing request also fired decline (409 + spurious error toast); in SellerOffersView the same flaw meant tapping Reject would ACCEPT the offer first (transaction: competitors rejected, property → pending). Fixed: `.buttonStyle(.borderless)` on all 4 action buttons. Verified live: decline now sends exactly one API call
-- **Bug 3 — dead property cards (P0)**: `PropertyCardView` unconditionally wrapped content in `Button(action: { onTap?() })`; browse + favorites embed it in `NavigationLink` without onTap, so the no-op Button swallowed every tap — buyers could not open ANY listing (no offers/viewings/favorites from the main funnel), likely broken since the card/link structure landed. Fixed: Button wrapper now conditional on `onTap != nil`
-- **Bug 4 — nil remote in detail**: `MainTabView.destinationView` built `PropertyDetailViewModel` without `remoteDataSource` (nil default) → no Offer Pending/Viewing state badges, Make Offer opened an empty sheet; state checks swallow errors so it failed silently. Fixed: pass the real remoteDataSource (already plumbed from ContentView)
-- Verified live end-to-end after fixes: browse → detail ("Offer Pending" + "Viewing Confirmed" + Cancel from real API data), heart toggle, seller Offers sheet (buyer name from preloaded association), seller Viewings (slots + requests, accept books slot, decline single-action), UTC→local slot time rendering, token refresh
-- Suite 272 green; consolidated evaluator APPROVE over all six changed files
-- Takeaway for the backlog: this bug class needs an automated integration/UI check (e.g. XCUITest happy path against `make up`, or extending the api repo's smoke suite) — manual sessions caught it this time
+- First live run of the full buyer↔seller funnel in the simulator against the real local stack; all four bugs were invisible to the 272-test unit suite because they live at integration boundaries (wire shapes, gesture composition, view nesting, dependency injection) that mock-routed tests never cross
+- **Bug 1 — nested-slot decode**: `APIViewingSlot.booked` was non-optional but `booked` only exists on the slot-LIST endpoint's computed response → seller's Viewings screen failed to load. Fixed: `Bool?` + `?? false`; fixtures must mirror the real payload per endpoint
+- **Bug 2 — List-row double-action**: default-styled Buttons in List rows fire ALL row actions on one tap (tapping Reject would ACCEPT the offer first). Fixed with `.buttonStyle(.borderless)` on all 4 action buttons
+- **Bug 3 — dead property cards (P0)**: `PropertyCardView` unconditionally wrapped content in a `Button`; browse + favorites embed it in `NavigationLink`, so the no-op Button swallowed every tap — buyers could not open ANY listing. Fixed: Button wrapper conditional on `onTap != nil`
+- **Bug 4 — nil remote in detail**: `MainTabView.destinationView` built `PropertyDetailViewModel` without `remoteDataSource` → no state badges, empty Make Offer sheet; failed silently because state checks swallow errors
+- Takeaway: this bug class needs automated integration coverage (XCUITest happy path against `make up`) — backlogged P1
 
 ## Fix APIOffer wire-decode bug + decode preloaded associations 06-07-2026
-- Removed the explicit snake_case `CodingKeys` from `APIOffer` (APIRemoteDataSource.swift) and the public `Offer` model — they conflicted with `APIClient.decoder`'s `.convertFromSnakeCase` (keys rewritten to camelCase before CodingKey matching → guaranteed `keyNotFound` on every real offer response). Same bug class as the viewing DTOs fixed in 9ba2384; offer tests never caught it because they're all mock-routed
-- Public `Offer` CodingKeys removal verified safe: no `decode(Offer.self)`/encode call sites, no Core Data OfferEntity — all constructions memberwise
-- Bonus fix: `APIOffer.asOffer()` had hardcoded `property: nil, buyer: nil`, discarding associations the Go handlers preload (Buyer on submit/accept/reject/list, Property+Images on ListMyOffers). Added `property: APIProperty?`/`buyer: APIUser?` and wired them through — verified `APIUser` matches the non-hidden Go User json tags exactly (sensitive fields are `json:"-"`)
+- Removed the explicit snake_case `CodingKeys` from `APIOffer` and the public `Offer` model — they conflicted with `.convertFromSnakeCase` (guaranteed `keyNotFound` on every real offer response). Same bug class as the viewing DTOs; offer tests never caught it because they're all mock-routed
+- Bonus fix: `APIOffer.asOffer()` had hardcoded `property: nil, buyer: nil`, discarding associations the Go handlers preload. Added and wired them through
 - Post-fix sweep: zero explicit CodingKeys remain in APIRemoteDataSource.swift — this bug class is extinct in the DTO layer
-- New `OfferWireDecodingTests.swift`: 2 regression tests decoding realistic Go-shaped envelope JSON (nested buyer, mixed fractional/plain RFC3339 timestamps) through the real `APIClient.decoder`
-- Suite: 271 tests, 0 failures; evaluator-verified (APPROVE)
+- New `OfferWireDecodingTests.swift`: 2 regression tests decoding realistic Go-shaped envelope JSON through the real decoder
 
 ## Viewing scheduling UI: seller slots, buyer requests 06-07-2026
-- Backend counterpart: realdeal-api ab6323b (one-off slots, seller-approved requests, one buyer per slot, public slot list with computed `booked` flag)
-- New `Models/Viewing/` (`ViewingSlot`, `ViewingRequest` + status enum), 9 operations added to `RemoteDataSourceProtocol`/`APIRemoteDataSource`/`MockRemoteDataSource`
-- Buyer: PropertyDetailView action bar gains Request Viewing beside Make Offer — sheet lists open (non-booked, future) slots, optional message; live request shows as "Viewing Requested"/"Viewing Confirmed" with Cancel (pending or accepted)
-- Seller: MyListingsView "Viewings" swipe action (mirrors "Offers") → SellerViewingsView: slot add (date pickers, client validation mirroring server rules)/delete with confirmation, requests grouped by slot with Accept/Decline; local state optimistically mirrors server transaction side effects (same convention as SellerOffersViewModel)
-- **Evaluator REJECT round caught a real runtime bug**: the wire DTOs declared explicit snake_case `CodingKeys` while `APIClient.decoder` uses `.convertFromSnakeCase` — mutually exclusive, every real API response would throw `keyNotFound`. Undetected by 268 green tests because nothing decoded real JSON (all mock-routed). Fixed by dropping the CodingKeys (APIProperty's convention) and adding two wire-decode tests that pipe realistic Go-shaped envelope JSON through the real `APIClient.decoder`
-- **Known pre-existing bug found in the process**: `APIOffer` (APIRemoteDataSource.swift ~385) has the identical CodingKeys+convertFromSnakeCase conflict — the offer flow (submit/list/accept) will fail to decode real API responses at runtime; never surfaced because offer tests are mock-only and the flow hasn't been live-tested from the app. Fix pending backlog decision
-- Suite: 270 tests, 0 failures (16 ViewingSchedulingTests incl. the 2 wire-decode guards)
+- Backend counterpart: realdeal-api ab6323b (one-off slots, seller-approved requests, one buyer per slot)
+- New `Models/Viewing/`, 9 operations added across the data-source protocols
+- Buyer: PropertyDetailView action bar gains Request Viewing beside Make Offer — sheet lists open future slots; live request shows as "Viewing Requested"/"Viewing Confirmed" with Cancel
+- Seller: MyListingsView "Viewings" swipe action → SellerViewingsView: slot add/delete, requests grouped by slot with Accept/Decline; local state optimistically mirrors server transaction side effects
+- **Evaluator REJECT round caught a real runtime bug**: the CodingKeys/convertFromSnakeCase conflict, undetected by 268 green tests because nothing decoded real JSON
 
 ## Remove the agent user role — 2-user model (buyers + sellers) 05-07-2026
-- Product decision: RealDeal is direct buyer↔seller ("Uber for private real estate sellers"); the realtor/agent concept is removed entirely. Backend (realdeal-api) needed zero changes — its UserRole was already buyer/seller only; this was an iOS-only removal
-- `UserRole.swift`: removed `.agent` case and the `requiresLicenseNumber` property; enum is now `.buyer`/`.homeowner` (homeowner still maps to API "seller")
-- Removed `licenseNumber` end-to-end: `UserProfile`, `AuthViewModel` (registration state, validation block, form reset), `LocalDataSource` mappings, and all three Core Data layers — the `.xcdatamodeld` contents (missed by the initial code map — the compiled model is the primary one; the programmatic model in `PersistenceController` is only a fallback), `UserProfileEntity+CoreDataProperties`, and the programmatic attribute
-- Core Data migration: lightweight migration already enabled (`shouldMigrateStoreAutomatically`/`shouldInferMappingModelAutomatically`); attribute removal migrates cleanly, with an existing delete-and-retry fallback for incompatible stores (dev-only data)
-- Role→API mapping simplified in `APIAuthenticationService` and `APIRemoteDataSource` (`.homeowner` → "seller"); role pickers iterate `UserRole.allCases` so the UI adapted automatically; agent mentions scrubbed from `MainTabView` copy and View previews
-- KEPT `ListingSource.realtor` + AggregationService priorities — listing data source, not a user role
-- Tests: deleted 7 agent/license tests (including two now-vacuous licence-number checks), renamed the case-count test to assert 2 roles, simplified homeowner registration test, updated LocalDataSource fixture — suite green (253 passed, 0 failed), verified independently by reviewer
-- First task run through the orchestrator pipeline: researcher (code map) → executor (implementation) → evaluator (independent review + test run, APPROVE) → committer
+- Product decision: RealDeal is direct buyer↔seller; the realtor/agent concept is removed entirely. Backend needed zero changes — its UserRole was already buyer/seller only
+- `UserRole` is now `.buyer`/`.homeowner` (homeowner maps to API "seller"); `licenseNumber` removed end-to-end including all three Core Data layers (the `.xcdatamodeld` contents are the primary compiled model — the programmatic one in `PersistenceController` is only a fallback)
+- Lightweight Core Data migration handles the attribute removal; KEPT `ListingSource.realtor` (listing data source, not a user role)
+- First task run through the full orchestrator pipeline: researcher → executor → evaluator (APPROVE) → committer
 
 ## Text search on the Search (formerly Browse) tab 03-07-2026
-- Tab renamed Browse → Search (magnifyingglass icon); heading "Browse Properties" → "Search Properties"
-- Toolbar gains a "Search" button right of "Filters" (flow may change later): opens a sheet with a single text field; Search applies, Clear Search (shown only when active) resets; blue dot on the button while a search is active (same convention as Filters)
-- `PropertyFilters.searchText` → sent as `q` to the lookup service (`APIRemoteDataSource`); `PropertyListViewModel.loadProperties`/`loadMoreProperties` now pass the filters object to the repository so search + filters are **server-side** (was `filters: nil` + client-only filtering); `FilterService.applySearchTextFilter` mirrors the q matching (street/city/description, case-insensitive) for cache/mock paths
-- `applySearch`/`clearSearch`/`hasActiveSearch` on PropertyListViewModel; verified live: `GET /api/v1/search/properties?q=Oak` from the app in the gateway log, result list narrowed, clear restored
-- New `testApplySearchTextFilter` in FilterServiceTests
-- Note: LocalStack has no persistent volume — uploaded images vanish when the Docker daemon restarts (broken-image icon on old listings); dev-only behavior
-
-## Listing form: state/province dropdown per country 11-06-2026
-- State/Province is a Picker fed by the backend: `config/countries` now returns each supported country with its subdivisions (`SupportedCountry`/`CountrySubdivision` types on `RemoteDataSourceProtocol`); picker shows names, stores codes; countries without a list fall back to free text
-- Switching country clears a province that isn't valid for the new country (Combine sink on `$country`); `loadSupportedCountries` reconciles both country and province
-- Label still adapts (State for US, Province otherwise); server validates state codes against the same list (realdeal-api d7ffd9b)
-- 2 new tests (subdivisions follow selected country; switching clears foreign province) — 261 green
-
-## Listing form: Year Built picker 10-06-2026
-- Year Built is a Picker (matching bedrooms/bathrooms): newest-first from next year (new construction) back to 1800, "Select" empty state; `PropertyCreationViewModel.selectableYears` matches the server's validation range
-
-## Listing form: validation-guided navigation 10-06-2026
-- Create/Update button is always tappable (disabled only mid-save) — no more greyed-out text with no explanation
-- Tapping with missing fields scrolls (ScrollViewReader + section `.id`s) to the first incomplete section in form order; each missing field shows its red "… is required" error beneath the input (the red "— must have a value" header suffix was tried and removed per feedback — per-field errors only)
-- `PropertyCreationViewModel`: `FormSection` enum (address/basicInfo/specifications), `incompleteSections` set + `firstInvalidSection` computed in `validateForm()`, cleared when the form is valid
-- 3 new tests: empty form flags all sections and targets address, ordering follows the form (price-only gap targets basicInfo), valid form clears flags — 259 tests green
-
-## Listing form follow-ups: year built required, lot size removed, toolbar fix 10-06-2026
-- Year Built is required (number pad, validated 1800..next year, mirrors server); Lot Size removed from the form and viewmodel (model keeps `lotSize` for MLS-imported display — 40 references across mocks/validators untouched)
-- Create/Update toolbar button: removed `.primaryButtonStyle` (drew a gray pill that looked like a stray square in the navigation bar); plain toolbar button with `.disabled(!canSave || isLoading)`
-- New test: implausible year built blocks save — 256 tests green
-
-## Listing form: country dropdown, geocoding, required specs 10-06-2026
-- Country is a Picker fed by `GET /api/v1/config/countries` (backend = single source of truth; `fetchSupportedCountries` on RemoteDataSource/PropertyRepository protocols with US/CA defaults so mocks and offline keep working); stores ISO alpha-2 codes, displays `Locale.localizedString(forRegionCode:)` names; selection reconciles if the backend drops a country
-- Postal field adapts to country: "ZIP Code" + number-ish keyboard for US, "Postal Code" otherwise; validation mirrors the server (US/CA regexes in `PropertyCreationViewModel.postalCodeError`); State/Province label adapts too
-- **Coordinates are geocoded from the address** (CLGeocoder via injectable `geocode` closure) on create/update — the Location Coordinates section is gone; geocode failure blocks save with a user-facing error
-- Specifications are required: bedrooms (0–10) and bathrooms (0–6 in halves) are Pickers, square feet a required numeric field; lot size/year built explicitly marked optional
-- DTOs renamed `zipCode` → `postalCode` (snake-case strategy makes the wire field `postal_code`, matching the API rename)
-- 5 new tests in `PropertyCreationFormTests` (stubbed geocoder): geocode success populates coords, failure blocks save, missing specs block save, per-country postal rules, supported-countries load + selection reconcile — 255 tests green
-
-## Remove broken RealDealUITests target 10-06-2026
-- Root cause of "Failed to load the test bundle. The bundle's executable couldn't be located": the `RealDealUITests` native target had an empty `fileSystemSynchronizedGroups = ()` and no `RealDealUITests/` source folder exists on disk, so the target compiled zero sources and produced an `.xctest` bundle with no executable
-- Deleted the dead target from `RealDeal.xcodeproj/project.pbxproj` (file reference, Products entry, native target, 3 empty build phases, target dependency + container proxy, TargetAttributes entry, Debug/Release build configs, and config list) — the project has no shared scheme, so Xcode's autogenerated scheme was pulling the broken target into every test run
-- Full `xcodebuild test` (and `make test`) now passes without `-only-testing:RealDealTests`; re-add UI tests later via Xcode's UI Testing Bundle template if wanted
-
-## Add sign-out UI 10-06-2026
-- `ProfileView`: "Sign Out" button on own profile (above Delete Profile), driven by an optional `onSignOut` closure; neutral styling vs. the destructive delete
-- `MainTabView`/`ProfileTab`: wires `onSignOut` to `authViewModel.signOut()`; after sign-out the Profile tab flips to `LoginView` via the existing `isAuthenticated` switch
-- `AuthViewModel.signOut()` now also clears `needsProfileSetup` so signing out mid-wizard dismisses it
-- Added `testSignOutClearsProfileSetupFlag` to ProfileSetupFlowTests
-
-## Profile setup wizard after sign-up 10-06-2026
-- Created `RealDeal/Views/ProfileSetupView.swift`: 3-step onboarding wizard (About You → Your Role → Privacy) presented full-screen after account creation; Skip always available since the account already exists server-side; Finish PUTs via `ProfileViewModel.updateProfile()` and only dismisses on success
-- `AuthViewModel`: added `@Published needsProfileSetup` (set on successful `signUp()`, not on sign-in) and `completeProfileSetup(updatedProfile:)` which also syncs `currentUser`
-- `MainTabView`: presents the wizard via `fullScreenCover` bound to `needsProfileSetup`; extracted private `ProfileTab` wrapper owning `ProfileViewModel` as `@StateObject` — fixes the root "Profile Not Found" bug where the view model was created inline in `body` and replaced (unloaded) on every re-render
-- `ProfileTab` reload is keyed on `"\(userId)-\(setupWizardActive)"`: the tab loads while the wizard covers it, so it must reload on wizard dismissal or it shows the pre-wizard profile (found via live simulator verification — role displayed stale "Buyer" while the backend already had "seller")
-- Verified end-to-end in the simulator against the local gateway stack: signup → wizard (name prefilled) → Owner role selected → Finish → profile screen immediately shows Homeowner; backend `users.role` = seller; iOS "homeowner" ↔ API "seller"
-- Noted: the app has no sign-out UI anywhere (worked around in testing via `xcrun simctl keychain reset`)
-- `ProfileView`: empty state now passes `onSetupProfile` to `EmptyStateView.profileNotFound(onCreate:)` so a profile-less user can open the wizard instead of hitting a dead end (own profile only)
-- Added `RealDealTests/ProfileSetupFlowTests.swift`: 5 tests — signup triggers wizard, failed signup doesn't, finish clears flag + syncs user, skip leaves user untouched, sign-in never triggers wizard
-- All 248 unit tests pass. Note: `RealDealUITests` bundle fails to load on this machine ("executable couldn't be located") — pre-existing target/DerivedData issue, unrelated; use `-only-testing:RealDealTests`
-
-## Adopt lookup search endpoint for browsing 10-06-2026
-- `APIRemoteDataSource.fetchProperties` now calls `GET /api/v1/search/properties` (lookup service through the gateway) with the search API's param names: min_price, max_price, beds, baths, property_type (comma-joined), source (comma-joined), seller_id, lat/lon/radius_miles
-- `ContentView`: `creaDataSource` set to nil — browse now shows real backend listings instead of the mock MLS feed (PropertyRepository previously short-circuited through MockCREADataSource before ever reaching the real API)
-- Entity CRUD (`GET/POST/PUT/DELETE /api/v1/properties...`) stays on core; only browse/search reads moved
-- Backend counterpart: lookup search gained seller_id, source, and geo-radius filters (realdeal-api commit 00b8fdb) so no client capability was lost
-
-## Implement offer flow iOS 10-05-2026
-- Created `RealDeal/Models/Offer/Offer.swift`: `Offer` struct (Codable, Identifiable) with `OfferStatus` enum (pending/accepted/rejected/withdrawn); snake_case CodingKeys mapping
-- Added 6 offer methods to `RemoteDataSourceProtocol`: submitOffer, fetchOffersForProperty, acceptOffer, rejectOffer, withdrawOffer, fetchMyOffers
-- Updated `APIRemoteDataSource`: implemented all 6 methods using existing `APIClient` patterns; added private `APIOffer` DTO and `EmptyBody` for PUT calls with no body
-- Updated `MockRemoteDataSource`: added in-memory `offers` store; stub implementations for all 6 methods; `submitOffer` returns a real mock offer for UI testing
-- Created `RealDeal/ViewModels/OfferViewModel.swift`: `@Published` amount, message, isSubmitting, errorMessage, submittedOffer; validates amount > 0 before submitting
-- Created `RealDeal/Views/SubmitOfferView.swift`: Form sheet with $ amount field (decimal keyboard), optional message, Submit/Cancel toolbar buttons, loading overlay
-- Updated `PropertyDetailViewModel`: added `isShowingOfferSheet`, `myPendingOffer`, `remoteDataSource` dependency, `isSeller` computed var, `checkMyPendingOffer()` async method
-- Updated `PropertyDetailView`: added `safeAreaInset` bottom bar — "Make Offer" button for buyers on active listings, "Offer Pending" badge if buyer already has a pending offer; presents `SubmitOfferView` as sheet
-- Created `RealDeal/ViewModels/SellerOffersViewModel.swift`: loadOffers, accept (transaction: updates accepted + rejects others locally), reject; all via `RemoteDataSourceProtocol`
-- Created `RealDeal/Views/SellerOffersView.swift`: list of offers with buyer name, amount, status badge; Accept/Reject buttons for pending offers; pull to refresh
-- Updated `MyListingsViewModel`: added `remoteDataSource: RemoteDataSourceProtocol` parameter (defaults to `MockRemoteDataSource` for backwards compat)
-- Updated `MyListingsView`: added leading swipe action "Offers" on each listing; tapping presents `SellerOffersView` in a sheet; added `offersProperty` state
-- Updated `MainTabView`: added `remoteDataSource` parameter (defaulted); passes through to `MyListingsViewModel`
-- Updated `ContentView`: passes `remoteDataSource` to `MainTabView`
-
-## Fix SwiftCheck dependency and simulator name 28-04-2026
-- Added SwiftCheck (`0.12.0`) to `RealDeal.xcodeproj/project.pbxproj`: remote package reference, product dependency, and wired to `RealDealTests` target
-- Fixed simulator name in `Makefile` from `iPhone 16 Pro` (no longer exists) to `iPhone 17 Pro`
-- Updated `SIM_ID` in `realdeal-api/Makefile` to match `iPhone 17 Pro` UUID
-- Tests now build and run; 2 test logic failures remain: `BackendIntegrationTests.testAggregationServiceCustomPrioritization`, `UserRoleTests.testAgentWithEmptyLicenseNumberFailsFormValidation`
-
-## Implement APIImageStorage presign upload 03-05-2026
-- Created `RealDeal/Services/APIImageStorage.swift`: `APIImageStorage` implementing `ImageStorageProtocol` using the presign flow — calls `POST /api/v1/upload/presign`, then PUTs image bytes directly to S3 (no Authorization header on the S3 PUT); returns CloudFront `public_url`
-- Path-to-upload_type mapping: `properties/` → `property`, `profiles/` → `profile`, `id_verification/` → `id_verification`, default → `property`
-- `deleteImage` and `deleteImages` throw `APIError.notSupported` (not yet implemented)
-- `uploadImages` batches sequential `uploadImage` calls
-- Updated `APIClient.swift`: added a second initializer `init(baseURL:keychainManager:session:)` for session injection in unit tests
-- Updated `APIRemoteDataSource.swift`: added `private let imageStorage: APIImageStorage`; `uploadImage` and `deleteImage` delegate to `imageStorage` instead of throwing `notSupported`
-- Created `RealDealTests/APIImageStorageTests.swift`: tests for each path-to-upload_type prefix, two-step call sequence (presign POST + S3 PUT), no Authorization header on S3 PUT, correct public URL returned, and notSupported errors for delete operations; uses `SpyURLSession` (URLSession subclass) with pre-configured responses
-
-## Fix two failing iOS tests 03-05-2026
-- Added agent license number validation to `validateRegistrationForm()` in `AuthViewModel.swift`: blocks sign-up and sets `licenseNumberValidationError` when `registerRole == .agent` and `registerLicenseNumber` is empty
-- Added MLS-006 listing ("123 Oak Street, Toronto, ON") to `MockMLSAPIClient.createSampleListings()` so `testAggregationServiceCustomPrioritization` has a conflicting MLS property to resolve against the user-generated one; MLS now wins with the custom priority config (MLS: 100 vs userGenerated: 50)
-- All tests pass
-
+- Tab renamed Browse → Search (magnifyingglass icon); heading "Search Properties"
+- Toolbar "Search" button beside "Filters" opens a sheet with a single text field; blue dot while active; Clear Search resets
+- `PropertyFilters.searchText` → sent as `q` to the lookup service; `PropertyListViewModel` now passes the filters object to the repository so search + filters are **server-side** (was `filters: nil` + client-only filtering); `FilterService.applySearchTextFilter` mirrors q matching for cache/mock paths
+- Verified live: `GET /api/v1/search/properties?q=Oak` in the gateway log, list narrowed, clear restored
